@@ -399,7 +399,6 @@ const LEVELS = [
       {x:400,fy:6*TILE,pw:7},{x:412,fy:7*TILE,pw:7},{x:424,fy:6*TILE,pw:7},
       {x:460,fy:6*TILE,pw:7},{x:472,fy:7*TILE,pw:7},{x:484,fy:6*TILE,pw:7},
       {x:510,fy:6*TILE,pw:7},{x:522,fy:7*TILE,pw:7},{x:535,fy:6*TILE,pw:7},
-      {x:558,fy:6*TILE,pw:7},{x:568,fy:7*TILE,pw:7},{x:576,fy:6*TILE,pw:7},
     ],
   },
   // Level 2 — wide gaps, tall platforms
@@ -788,6 +787,17 @@ function loadLevel(n) {
   won = false; dead = false;
   score = 0; coinCount = 0;
   lvlComplete.active = false; lvlComplete.timer = 0;
+  redBat.active = false; redBat.dead = false; redBat.hp = RB_MAX_HP;
+  redBat.hitFlash = 0; redBat.phase2 = false; redBat.state = 'idle'; redBat.stateTimer = 0;
+  // Spawn red bat mini-boss for level 1 only
+  if (currentLevel === 1) {
+    const rbX = (FLAG_X - 8) * TILE;
+    const rbY = (groundY - 5) * TILE;
+    redBat.active = true;
+    redBat.x = rbX; redBat.y = rbY;
+    redBat.baseX = rbX; redBat.baseY = rbY;
+    redBat.wobble = 0;
+  }
 
   const sel = document.getElementById('level-btn');
   if (sel) sel.value = currentLevel;
@@ -1416,6 +1426,242 @@ const warden = {
   vulnTimer: 0,       // frames the warden is open to damage after all sentinels die
   sentinels: [],      // 3 red pulsing bats
 };
+
+// ── Red Bat mini-boss (level 1 end) ──────────────────────────────────────────
+const RB_MAX_HP = 6;
+const RB_SIZE   = Math.round(TILE * 1.8);
+const redBat = {
+  active: false,
+  x: 0, y: 0,
+  baseX: 0, baseY: 0,   // hover anchor
+  w: RB_SIZE, h: RB_SIZE,
+  hp: RB_MAX_HP, maxHp: RB_MAX_HP,
+  wobble: 0,
+  dead: false, deadTimer: 0,
+  hitFlash: 0,
+  state: 'idle',         // idle | freeze | charge | return
+  stateTimer: 0,
+  chargeVx: 0, chargeVy: 0,
+  phase2: false,         // triggered at 3 HP
+};
+
+function damageRedBat(dmg) {
+  if (redBat.dead || redBat.hitFlash > 0) return false;
+  redBat.hp -= dmg;
+  redBat.hitFlash = 18;
+  spawnExplosion(redBat.x + redBat.w / 2, redBat.y + redBat.h / 2, true);
+  playSound('hit', 0.6);
+  if (!player.onGround) { player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
+  if (redBat.hp <= 0) {
+    redBat.hp = 0;
+    redBat.dead = true;
+    redBat.deadTimer = 180;
+    redBat.state = 'dead';
+    comboCount += 5; comboTimer = 200;
+    score += 3000; updateHUD();
+    return true;
+  }
+  // Phase 2 trigger at 3 HP
+  if (!redBat.phase2 && redBat.hp <= 3) {
+    redBat.phase2 = true;
+    redBat.state = 'freeze';
+    redBat.stateTimer = 70; // ~1.15s freeze
+  }
+  return false;
+}
+
+function updateRedBat() {
+  if (!redBat.active) return;
+  if (redBat.hitFlash > 0) redBat.hitFlash--;
+  if (redBat.dead) {
+    redBat.deadTimer--;
+    redBat.wobble += 0.15;
+    // Spin and drift down while dying
+    redBat.y += 1.5;
+    if (redBat.deadTimer <= 0) {
+      redBat.active = false;
+      // Trigger level complete cinematic
+      lvlComplete.active = true;
+      lvlComplete.timer = 0;
+      lvlComplete.zoomStart = zoom;
+      score += 1000; updateHUD();
+    }
+    return;
+  }
+
+  redBat.wobble += 0.04;
+
+  if (redBat.state === 'idle') {
+    // Gentle hover
+    redBat.x = redBat.baseX;
+    redBat.y = redBat.baseY + Math.sin(redBat.wobble) * 20;
+    // After phase 2 is done charging, repeat every 5s
+    if (redBat.phase2) {
+      redBat.stateTimer--;
+      if (redBat.stateTimer <= 0) {
+        redBat.state = 'freeze';
+        redBat.stateTimer = 55;
+      }
+    }
+  } else if (redBat.state === 'freeze') {
+    // Lock in place, flash warning
+    redBat.x = redBat.baseX;
+    redBat.y = redBat.baseY;
+    redBat.stateTimer--;
+    if (redBat.stateTimer <= 0) {
+      // Aim directly at player
+      const dx = (player.x + player.w / 2) - (redBat.x + redBat.w / 2);
+      const dy = (player.y + player.h / 2) - (redBat.y + redBat.h / 2);
+      const dist = Math.hypot(dx, dy) || 1;
+      const speed = 28; // very fast
+      redBat.chargeVx = (dx / dist) * speed;
+      redBat.chargeVy = (dy / dist) * speed;
+      redBat.state = 'charge';
+      redBat.stateTimer = 28; // charge lasts ~0.45s then returns
+    }
+  } else if (redBat.state === 'charge') {
+    redBat.x += redBat.chargeVx;
+    redBat.y += redBat.chargeVy;
+    redBat.stateTimer--;
+    if (redBat.stateTimer <= 0) {
+      redBat.state = 'return';
+    }
+    // Hurt player on contact during charge
+    const gr = { x: redBat.x + 4, y: redBat.y + 4, w: redBat.w - 8, h: redBat.h - 8 };
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    if (rectsOverlap(gr, pr) && player.invincible === 0) {
+      hurtPlayer(1); player.invincible = 80;
+      player.vx = (player.x < redBat.x + redBat.w / 2 ? -1 : 1) * 10;
+      player.vy = -6;
+      playSound('hurt', 0.6);
+      if (hp <= 0) killPlayer();
+    }
+  } else if (redBat.state === 'return') {
+    // Snap back to base position
+    redBat.x += (redBat.baseX - redBat.x) * 0.18;
+    redBat.y += (redBat.baseY - redBat.y) * 0.18;
+    if (Math.abs(redBat.x - redBat.baseX) < 2 && Math.abs(redBat.y - redBat.baseY) < 2) {
+      redBat.x = redBat.baseX;
+      redBat.y = redBat.baseY;
+      redBat.state = 'idle';
+      redBat.stateTimer = 300; // 5s before next charge
+      redBat.wobble = 0;
+    }
+    // Still hurt player on contact during return
+    const gr2 = { x: redBat.x + 4, y: redBat.y + 4, w: redBat.w - 8, h: redBat.h - 8 };
+    const pr2 = { x: player.x, y: player.y, w: player.w, h: player.h };
+    if (rectsOverlap(gr2, pr2) && player.invincible === 0) {
+      hurtPlayer(1); player.invincible = 80;
+      player.vx = (player.x < redBat.x + redBat.w / 2 ? -1 : 1) * 10;
+      player.vy = -6;
+      playSound('hurt', 0.6);
+      if (hp <= 0) killPlayer();
+    }
+  }
+
+  // Idle/freeze: player can hit it with dash or homing
+  if (redBat.state !== 'charge' && redBat.state !== 'return' && redBat.state !== 'dead') {
+    const gr = { x: redBat.x + 4, y: redBat.y + 4, w: redBat.w - 8, h: redBat.h - 8 };
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    if (rectsOverlap(gr, pr)) {
+      if (player.dashFrames > 0 && !redBat.hitFlash) {
+        damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
+        player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -6; player.dashFrames = 0;
+      } else if (player.homing) {
+        // homing handled in nearestLiveGoomba redirect — handled below
+      } else if (player.invincible === 0) {
+        hurtPlayer(1); player.invincible = 80;
+        player.vx = (player.x < redBat.x + redBat.w / 2 ? -1 : 1) * 10; player.vy = -6;
+        playSound('hurt', 0.6);
+        if (hp <= 0) killPlayer();
+      }
+    }
+  }
+}
+
+function drawRedBat() {
+  if (!redBat.active) return;
+  const cx = redBat.x + redBat.w / 2 - camera;
+  const cy = redBat.y + redBat.h / 2;
+  const t = performance.now() / 1000;
+  const sc = RB_SIZE / TILE; // ~1.8
+  const isFreezing = redBat.state === 'freeze';
+  const isCharging = redBat.state === 'charge' || redBat.state === 'return';
+
+  if (redBat.dead) {
+    // Spin and fade out
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, redBat.deadTimer / 180);
+    ctx.translate(cx, cy);
+    ctx.rotate(redBat.wobble * 3);
+    ctx.scale(sc, sc);
+    _drawBatShape(0, 0, t, redBat.wobble, true, false);
+    ctx.restore();
+    return;
+  }
+
+  ctx.save();
+  if (redBat.hitFlash > 0 && Math.floor(redBat.hitFlash / 3) % 2 === 0) {
+    ctx.globalAlpha = 0.4;
+  }
+
+  // Freeze warning — white pulse
+  if (isFreezing) {
+    const pulse = 0.3 + 0.7 * Math.abs(Math.sin(t * 12));
+    ctx.save();
+    ctx.globalAlpha = pulse * 0.7;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx, cy, redBat.w * 0.7, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Charge — draw motion blur streaks
+  if (isCharging) {
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    for (let i = 1; i <= 3; i++) {
+      ctx.fillStyle = '#ff2200';
+      ctx.beginPath();
+      ctx.arc(cx - redBat.chargeVx * i * 0.08, cy - redBat.chargeVy * i * 0.08, redBat.w * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // HP bar above bat
+  const barW = redBat.w * 1.4;
+  const barX = cx - barW / 2;
+  const barY = cy - redBat.h / 2 - 14;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(barX - 1, barY - 1, barW + 2, 9);
+  ctx.fillStyle = redBat.hp > 3 ? '#ff4444' : '#ff8800';
+  ctx.fillRect(barX, barY, barW * (redBat.hp / RB_MAX_HP), 7);
+
+  ctx.translate(cx, cy);
+  ctx.scale(sc, sc);
+  _drawBatShape(0, 0, t, redBat.wobble, true, isCharging);
+  ctx.restore();
+}
+
+function _drawBatShape(cx, cy, t, wobble, isRed, fast) {
+  const wingSpan = (30 + Math.sin(t * (fast ? 12 : 3) + wobble) * 10);
+  const flapOff  = Math.abs(Math.sin(t * (fast ? 12 : 3) + wobble)) * 14;
+  ctx.fillStyle = '#5a0000';
+  ctx.beginPath(); ctx.moveTo(cx, cy-2); ctx.lineTo(cx-wingSpan, cy-5-flapOff); ctx.lineTo(cx-wingSpan+12, cy+7); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx, cy-2); ctx.lineTo(cx+wingSpan, cy-5-flapOff); ctx.lineTo(cx+wingSpan-12, cy+7); ctx.fill();
+  ctx.fillStyle = '#8b1010';
+  ctx.beginPath(); ctx.moveTo(cx, cy-1); ctx.lineTo(cx-wingSpan*0.6, cy-2-flapOff*0.5); ctx.lineTo(cx-wingSpan*0.55, cy+3); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx, cy-1); ctx.lineTo(cx+wingSpan*0.6, cy-2-flapOff*0.5); ctx.lineTo(cx+wingSpan*0.55, cy+3); ctx.fill();
+  ctx.fillStyle = '#3a0000';
+  ctx.beginPath(); ctx.ellipse(cx, cy, 12, 10, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#660000';
+  ctx.beginPath(); ctx.ellipse(cx, cy-1, 8, 7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ff6600';
+  ctx.beginPath(); ctx.arc(cx-4, cy-2, 4, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+4, cy-2, 4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ffcc00';
+  ctx.beginPath(); ctx.arc(cx-4, cy-2, 1.8, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+4, cy-2, 1.8, 0, Math.PI*2); ctx.fill();
+}
 
 function damageWraith(dmg) {
   if (wraith.dead || wraith.hitFlash > 0 || wraith.invulTimer > 0) return false;
@@ -2382,13 +2628,16 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
   }
   if (warden.active && !warden.dead) {
     for (const rk of warden.rocks) { if (!rk.dead) candidates.push(rk); }
-    // Prioritise live sentinels; only add warden itself when vulnerable
     const liveSentinels = warden.sentinels.filter(s => !s.dead);
     if (liveSentinels.length > 0) {
       for (const s of liveSentinels) candidates.push(s);
     } else {
       candidates.push(warden);
     }
+  }
+  // Red bat mini-boss — homing target during idle/freeze only
+  if (redBat.active && !redBat.dead && (redBat.state === 'idle' || redBat.state === 'freeze')) {
+    candidates.push(redBat);
   }
   for (const g of candidates) {
     if (g.dead) continue;
@@ -2490,6 +2739,9 @@ function update(dt) {
   if (lvlComplete.active) {
     lvlComplete.timer++;
     const t = lvlComplete.timer;
+    // Always in walk cycle (not ball) during cinematic
+    player.ballForm = false;
+    player.homing = false;
     if (t < LVC_FADE_IN) {
       // freeze player in place
       player.vx = 0; player.vy = 0;
@@ -2599,8 +2851,14 @@ function update(dt) {
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
-        const killed = damageEnemy(tg, 1);
-        if (killed) { comboCount++; comboTimer = 120; }
+        // Red bat mini-boss homing hit
+        if (tg === redBat) {
+          damageRedBat(player.frenzyTimer > 0 ? redBat.hp : 1);
+          comboCount++; comboTimer = 120;
+        } else {
+          const killed = damageEnemy(tg, 1);
+          if (killed) { comboCount++; comboTimer = 120; }
+        }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
         player.vy = -6;
@@ -2897,16 +3155,12 @@ function update(dt) {
   updateBoss();
   updateWraith();
   updateWarden();
+  updateRedBat();
 
-  // Flag — loads warden boss level on level 1, wins on other non-boss levels
-  if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial) {
+  // Flag — level complete on non-boss, non-tutorial levels (not level 1 which ends with red bat)
+  if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial && currentLevel !== 1) {
     if (player.x + player.w > FLAG_X * TILE && !won) {
-      if (currentLevel === 1) {
-        // Level 1 flag: go to warden boss (index 14)
-        loadLevel(14);
-        player.x = 2 * TILE; player.y = groundY * TILE - player.h;
-        player.vx = 0; player.vy = 0; camera = 0;
-      } else {
+      {
         lvlComplete.active = true;
         lvlComplete.timer = 0;
         lvlComplete.zoomStart = zoom;
@@ -3551,7 +3805,7 @@ function drawGoombas() {
 }
 
 function drawFlagPole() {
-  if (LEVELS[currentLevel]?.isTutorial) return;
+  if (LEVELS[currentLevel]?.isTutorial || currentLevel === 1) return;
   const sx = FLAG_X * TILE - camera;
   const t = performance.now() / 500;
   // Beacon pillar
@@ -3819,6 +4073,7 @@ function loop(ts) {
   drawBoss();
   drawWraith();
   drawWarden();
+  drawRedBat();
   drawParticlesAll();
   if (!dead) drawPlayer();
   else drawDeathAnimation();
@@ -4007,12 +4262,31 @@ function loop(ts) {
     zoom = targetZoom;
 
     // Black fade — darkens quickly
-    ctx.save();
     ctx.fillStyle = `rgba(0,0,0,${fadeT * 0.88})`;
     ctx.fillRect(0, 0, W, H);
 
+    // Redraw player at full brightness over the overlay, in walk cycle not ball
+    ctx.save();
+    const pScreenX = W / 2;
+    const pScreenY = player.y + player.h / 2 - cameraY;
+    ctx.translate(pScreenX, pScreenY);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-pScreenX, -pScreenY);
+    ctx.save();
+    ctx.translate(0, -cameraY);
+    const _prevBallForm = player.ballForm;
+    const _prevHoming   = player.homing;
+    player.ballForm = false;
+    player.homing   = false;
+    if (!dead) drawPlayer();
+    player.ballForm = _prevBallForm;
+    player.homing   = _prevHoming;
+    ctx.restore();
+    ctx.restore();
+
     // "LEVEL COMPLETE" text
     if (textT > 0) {
+      ctx.save();
       const bounce = Math.sin(textT * Math.PI) * 12 * (1 - textT * 0.4);
       ctx.globalAlpha = textT;
       ctx.textAlign = 'center';
@@ -4026,8 +4300,8 @@ function loop(ts) {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.fillText('Score: ' + String(score).padStart(6, '0'), W / 2, H / 2 + 36);
       ctx.globalAlpha = 1;
+      ctx.restore();
     }
-    ctx.restore();
   }
 
   // Screen-space overlays
