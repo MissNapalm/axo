@@ -3126,7 +3126,7 @@ function update(dt) {
           player.dashFrames = 0;
           player.onGround = false;
         }
-      } else if (player.spinning || (player.vy > 0 && player.y + player.h < g.y + g.h / 2 + 10)) {
+      } else if (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10)) {
         damageEnemy(g, 1);
         player.vy = -6;
       } else if (player.homing) {
