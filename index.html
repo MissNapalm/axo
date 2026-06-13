@@ -305,33 +305,127 @@ function makeCoinDefs(fn) {
 
 // ── 11 levels ─────────────────────────────────────────────────────────────────
 const LEVELS = [
-  // Level 1 — original
+  // Level 1
   {
-    gaps: [{x:80,w:5},{x:140,w:6},{x:220,w:8},{x:300,w:5},{x:380,w:9},{x:460,w:6},{x:530,w:7},{x:580,w:5},{x:650,w:6},{x:720,w:8},{x:800,w:7},{x:870,w:10},{x:940,w:6},{x:1010,w:8},{x:1080,w:7},{x:1140,w:6}],
-    platforms: [
-      // Original ground-level platforms
-      {x:18,y:9,w:4,t:'qblock'},{x:42,y:6,w:5,t:'brick'},{x:90,y:5,w:6,t:'qblock'},{x:115,y:9,w:8,t:'brick'},{x:150,y:6,w:5,t:'qblock'},{x:170,y:9,w:6,t:'brick'},{x:204,y:5,w:4,t:'brick'},{x:234,y:3,w:12,t:'brick'},{x:262,y:7,w:7,t:'qblock'},{x:290,y:8,w:6,t:'brick'},{x:310,y:5,w:8,t:'qblock'},{x:332,y:3,w:6,t:'brick'},{x:355,y:8,w:6,t:'qblock'},{x:370,y:5,w:4,t:'brick'},{x:393,y:4,w:10,t:'qblock'},{x:420,y:7,w:6,t:'brick'},{x:440,y:4,w:6,t:'qblock'},{x:470,y:6,w:8,t:'brick'},{x:490,y:9,w:5,t:'qblock'},{x:515,y:7,w:5,t:'brick'},{x:542,y:5,w:8,t:'qblock'},{x:566,y:8,w:5,t:'brick'},{x:590,y:6,w:6,t:'qblock'},{x:606,y:3,w:6,t:'brick'},{x:630,y:8,w:5,t:'qblock'},{x:660,y:5,w:6,t:'brick'},{x:710,y:7,w:5,t:'brick'},{x:740,y:4,w:8,t:'qblock'},{x:762,y:9,w:5,t:'brick'},{x:790,y:5,w:6,t:'qblock'},{x:818,y:3,w:7,t:'brick'},{x:840,y:7,w:6,t:'qblock'},{x:862,y:4,w:5,t:'brick'},{x:920,y:6,w:6,t:'brick'},{x:950,y:9,w:5,t:'qblock'},{x:976,y:4,w:7,t:'brick'},{x:1000,y:6,w:6,t:'qblock'},{x:1050,y:8,w:5,t:'qblock'},{x:1070,y:5,w:6,t:'brick'},{x:1130,y:7,w:5,t:'brick'},{x:1155,y:4,w:8,t:'qblock'},{x:1175,y:6,w:6,t:'brick'},
-      // Vertical staircase towers — each set steps up to y:1
-      {x:60,y:8,w:4,t:'brick'},{x:62,y:6,w:4,t:'brick'},{x:64,y:4,w:4,t:'qblock'},{x:66,y:2,w:4,t:'qblock'},{x:68,y:1,w:5,t:'qblock'},
-      {x:200,y:7,w:4,t:'brick'},{x:202,y:5,w:4,t:'brick'},{x:204,y:3,w:4,t:'qblock'},{x:206,y:1,w:5,t:'qblock'},
-      {x:450,y:8,w:3,t:'brick'},{x:452,y:6,w:3,t:'brick'},{x:454,y:4,w:3,t:'qblock'},{x:456,y:2,w:3,t:'qblock'},{x:458,y:1,w:4,t:'qblock'},
-      {x:680,y:7,w:4,t:'brick'},{x:682,y:5,w:4,t:'brick'},{x:684,y:3,w:5,t:'qblock'},{x:686,y:1,w:5,t:'qblock'},
-      {x:890,y:6,w:5,t:'brick'},{x:892,y:4,w:5,t:'brick'},{x:894,y:2,w:6,t:'qblock'},{x:896,y:1,w:6,t:'qblock'},
-      {x:1020,y:7,w:4,t:'brick'},{x:1022,y:5,w:4,t:'brick'},{x:1024,y:3,w:5,t:'qblock'},{x:1026,y:1,w:5,t:'qblock'},
-      {x:1100,y:6,w:4,t:'brick'},{x:1102,y:4,w:4,t:'brick'},{x:1104,y:2,w:5,t:'qblock'},{x:1106,y:1,w:5,t:'qblock'},
-      // High floating platforms connecting the tops
-      {x:100,y:2,w:5,t:'brick'},{x:145,y:1,w:6,t:'qblock'},{x:215,y:1,w:8,t:'brick'},
-      {x:320,y:1,w:7,t:'qblock'},{x:390,y:2,w:5,t:'brick'},{x:480,y:1,w:6,t:'qblock'},
-      {x:560,y:2,w:5,t:'brick'},{x:620,y:1,w:6,t:'qblock'},{x:750,y:1,w:7,t:'brick'},
-      {x:830,y:2,w:5,t:'qblock'},{x:960,y:1,w:6,t:'brick'},{x:1060,y:1,w:6,t:'qblock'},
-      {x:1140,y:2,w:6,t:'brick'},
-      // Health blocks
-      {x:55,y:7,w:1,t:'hblock'},{x:175,y:7,w:1,t:'hblock'},{x:295,y:6,w:1,t:'hblock'},{x:415,y:6,w:1,t:'hblock'},{x:535,y:6,w:1,t:'hblock'},{x:660,y:7,w:1,t:'hblock'},{x:780,y:6,w:1,t:'hblock'},{x:900,y:6,w:1,t:'hblock'},{x:1020,y:7,w:1,t:'hblock'},{x:1140,y:6,w:1,t:'hblock'}
+    // Ground gaps — wide pits at each vertical climb zone
+    gaps: [
+      {x:55,w:4},{x:110,w:5},                         // early warmup
+      {x:190,w:12},                                    // ZONE 1 pit — wide, forces high route
+      {x:290,w:5},{x:340,w:4},
+      {x:420,w:14},                                    // ZONE 2 pit
+      {x:530,w:4},{x:570,w:5},
+      {x:640,w:13},                                    // ZONE 3 pit
+      {x:750,w:4},{x:800,w:5},
+      {x:870,w:14},                                    // ZONE 4 pit
+      {x:980,w:5},
+      {x:1060,w:13},                                   // ZONE 5 pit
+      {x:1150,w:6},
     ],
-    pipes: [{x:20,h:2},{x:45,h:3},{x:65,h:4},{x:120,h:2},{x:160,h:3},{x:200,h:2},{x:270,h:4},{x:310,h:3},{x:360,h:2},{x:420,h:3},{x:470,h:4},{x:520,h:2},{x:560,h:3},{x:600,h:2},{x:640,h:3},{x:695,h:4},{x:750,h:2},{x:810,h:3},{x:855,h:4},{x:910,h:2},{x:960,h:3},{x:1015,h:4},{x:1060,h:2},{x:1110,h:3},{x:1160,h:2}],
+    platforms: [
+      // ── Opening stretch (flat, easy) ─────────────────────────────────────────
+      {x:5,y:9,w:5,t:'qblock'},{x:18,y:7,w:4,t:'brick'},{x:30,y:9,w:6,t:'qblock'},
+      {x:48,y:7,w:5,t:'brick'},{x:62,y:9,w:4,t:'qblock'},{x:75,y:6,w:5,t:'brick'},
+      {x:88,y:9,w:5,t:'qblock'},{x:102,y:7,w:4,t:'brick'},
+
+      // ── ZONE 1 — vertical climb over wide pit (x:190–202) ────────────────────
+      // Left ramp up
+      {x:125,y:8,w:4,t:'brick'},{x:133,y:6,w:4,t:'brick'},{x:141,y:4,w:4,t:'qblock'},{x:149,y:2,w:5,t:'qblock'},
+      // High bridge over pit (y:1–2), enemies on top
+      {x:158,y:2,w:6,t:'brick'},{x:166,y:1,w:8,t:'qblock'},{x:176,y:2,w:6,t:'brick'},
+      // Right descent
+      {x:184,y:3,w:4,t:'qblock'},{x:192,y:5,w:4,t:'brick'},{x:200,y:7,w:5,t:'qblock'},
+      // Low ground option (dangerous — pit nearby)
+      {x:210,y:9,w:6,t:'brick'},{x:230,y:7,w:5,t:'qblock'},{x:250,y:9,w:5,t:'brick'},
+
+      // ── Mid stretch ──────────────────────────────────────────────────────────
+      {x:268,y:6,w:5,t:'brick'},{x:282,y:8,w:4,t:'qblock'},{x:300,y:5,w:5,t:'brick'},
+      {x:315,y:8,w:5,t:'qblock'},{x:330,y:6,w:5,t:'brick'},{x:346,y:8,w:5,t:'qblock'},
+      {x:360,y:5,w:5,t:'brick'},{x:375,y:8,w:5,t:'qblock'},
+
+      // ── ZONE 2 — vertical climb over wide pit (x:420–434) ────────────────────
+      {x:388,y:7,w:4,t:'brick'},{x:396,y:5,w:4,t:'brick'},{x:404,y:3,w:4,t:'qblock'},{x:412,y:1,w:5,t:'qblock'},
+      {x:420,y:1,w:6,t:'brick'},{x:428,y:2,w:5,t:'qblock'},
+      {x:436,y:1,w:7,t:'qblock'},                     // skybridge
+      {x:446,y:2,w:5,t:'brick'},{x:454,y:4,w:4,t:'qblock'},{x:462,y:6,w:4,t:'brick'},{x:470,y:8,w:4,t:'qblock'},
+      {x:484,y:9,w:5,t:'brick'},{x:498,y:7,w:5,t:'qblock'},{x:512,y:9,w:5,t:'brick'},
+
+      // ── Mid stretch 2 ────────────────────────────────────────────────────────
+      {x:525,y:6,w:5,t:'brick'},{x:538,y:8,w:5,t:'qblock'},{x:552,y:5,w:5,t:'brick'},
+      {x:564,y:8,w:4,t:'qblock'},{x:578,y:6,w:4,t:'brick'},{x:592,y:8,w:4,t:'qblock'},
+      {x:606,y:5,w:4,t:'brick'},{x:620,y:8,w:5,t:'qblock'},
+
+      // ── ZONE 3 — vertical climb over wide pit (x:640–653) ────────────────────
+      {x:633,y:7,w:4,t:'brick'},{x:641,y:5,w:4,t:'brick'},{x:649,y:3,w:4,t:'qblock'},{x:657,y:1,w:5,t:'qblock'},
+      {x:665,y:1,w:9,t:'brick'},                      // long skybridge
+      {x:676,y:2,w:5,t:'qblock'},{x:684,y:4,w:4,t:'brick'},{x:692,y:6,w:4,t:'qblock'},{x:700,y:8,w:4,t:'brick'},
+      {x:714,y:9,w:5,t:'qblock'},{x:728,y:7,w:5,t:'brick'},{x:742,y:9,w:5,t:'qblock'},
+
+      // ── Mid stretch 3 ────────────────────────────────────────────────────────
+      {x:756,y:6,w:5,t:'brick'},{x:770,y:8,w:4,t:'qblock'},{x:784,y:5,w:5,t:'brick'},
+      {x:798,y:8,w:4,t:'qblock'},{x:812,y:6,w:5,t:'brick'},{x:826,y:8,w:4,t:'qblock'},
+      {x:840,y:4,w:5,t:'qblock'},{x:854,y:8,w:5,t:'brick'},
+
+      // ── ZONE 4 — vertical climb over wide pit (x:870–884) ────────────────────
+      {x:862,y:7,w:4,t:'brick'},{x:868,y:5,w:4,t:'brick'},{x:874,y:3,w:5,t:'qblock'},{x:880,y:1,w:5,t:'qblock'},
+      {x:888,y:1,w:10,t:'brick'},                     // skybridge with gap in middle
+      {x:900,y:2,w:5,t:'qblock'},
+      {x:910,y:1,w:6,t:'qblock'},
+      {x:920,y:3,w:4,t:'brick'},{x:928,y:5,w:4,t:'qblock'},{x:936,y:7,w:4,t:'brick'},{x:944,y:9,w:5,t:'qblock'},
+      {x:958,y:7,w:5,t:'brick'},{x:972,y:9,w:5,t:'qblock'},
+
+      // ── Mid stretch 4 ────────────────────────────────────────────────────────
+      {x:986,y:6,w:5,t:'brick'},{x:1000,y:8,w:5,t:'qblock'},{x:1014,y:5,w:5,t:'brick'},
+      {x:1028,y:8,w:4,t:'qblock'},{x:1042,y:6,w:4,t:'brick'},
+
+      // ── ZONE 5 — vertical climb over wide pit (x:1060–1073) ──────────────────
+      {x:1052,y:7,w:4,t:'brick'},{x:1058,y:5,w:4,t:'brick'},{x:1064,y:3,w:4,t:'qblock'},{x:1070,y:1,w:5,t:'qblock'},
+      {x:1078,y:1,w:7,t:'brick'},                     // final skybridge
+      {x:1088,y:2,w:5,t:'qblock'},{x:1096,y:4,w:4,t:'brick'},{x:1104,y:6,w:4,t:'qblock'},{x:1112,y:8,w:4,t:'brick'},
+      {x:1126,y:9,w:5,t:'qblock'},{x:1140,y:7,w:5,t:'brick'},{x:1154,y:9,w:5,t:'qblock'},
+
+      // ── Final approach ───────────────────────────────────────────────────────
+      {x:1162,y:6,w:5,t:'brick'},{x:1170,y:8,w:6,t:'qblock'},{x:1182,y:5,w:8,t:'brick'},
+
+      // ── Health blocks scattered at mid heights ───────────────────────────────
+      {x:60,y:7,w:1,t:'hblock'},{x:175,y:3,w:1,t:'hblock'},{x:355,y:6,w:1,t:'hblock'},
+      {x:490,y:2,w:1,t:'hblock'},{x:655,y:2,w:1,t:'hblock'},{x:840,y:5,w:1,t:'hblock'},
+      {x:910,y:2,w:1,t:'hblock'},{x:1042,y:7,w:1,t:'hblock'},{x:1086,y:2,w:1,t:'hblock'},
+    ],
+    pipes: [{x:20,h:2},{x:40,h:3},{x:72,h:2},{x:106,h:4},{x:255,h:3},{x:278,h:2},{x:348,h:3},{x:378,h:4},{x:518,h:2},{x:542,h:3},{x:608,h:4},{x:632,h:2},{x:758,h:3},{x:786,h:2},{x:860,h:4},{x:974,h:3},{x:998,h:2},{x:1048,h:3},{x:1128,h:4},{x:1156,h:2}],
     coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,14,10);cl(18,30,9);cl(36,50,8);ca(60,9,5,7);cl(88,112,5);ca(130,8,4,6);cl(148,170,5);ca(195,8,5,7);cl(230,248,3);cl(263,280,6);cl(307,328,5);ca(340,6,4,6);cl(363,388,4);cl(392,410,4);ca(430,5,5,7);cl(468,496,5);cl(540,562,5);cl(575,600,6);cl(620,648,8);ca(665,6,5,7);cl(685,712,5);ca(730,7,4,6);cl(748,780,4);cl(795,820,6);ca(840,5,5,7);cl(858,890,4);cl(908,940,5);ca(960,6,4,6);cl(978,1010,5);cl(1025,1055,4);ca(1075,5,5,7);cl(1090,1130,6);cl(1145,1180,5); }),
-    goombas: [{x:15,pl:8,pr:25},{x:42,pl:34,pr:52},{x:50,pl:42,pr:60},{x:70,pl:62,pr:80},{x:92,pl:85,pr:103},{x:102,pl:93,pr:114},{x:122,pl:114,pr:134},{x:152,pl:144,pr:164},{x:162,pl:154,pr:174},{x:196,pl:188,pr:210},{x:238,pl:230,pr:252},{x:248,pl:240,pr:260},{x:282,pl:274,pr:296},{x:322,pl:314,pr:336},{x:334,pl:326,pr:346},{x:368,pl:360,pr:382},{x:412,pl:404,pr:428},{x:424,pl:416,pr:436},{x:452,pl:444,pr:466},{x:480,pl:472,pr:494},{x:544,pl:536,pr:558},{x:556,pl:548,pr:568},{x:572,pl:564,pr:586},{x:596,pl:588,pr:614},{x:625,pl:618,pr:638},{x:638,pl:630,pr:650},{x:662,pl:654,pr:676},{x:700,pl:692,pr:716},{x:714,pl:706,pr:726},{x:742,pl:734,pr:758},{x:780,pl:772,pr:796},{x:794,pl:786,pr:808},{x:822,pl:814,pr:838},{x:858,pl:850,pr:874},{x:872,pl:864,pr:884},{x:900,pl:892,pr:916},{x:940,pl:932,pr:956},{x:954,pl:946,pr:966},{x:980,pl:972,pr:996},{x:1020,pl:1012,pr:1036},{x:1034,pl:1026,pr:1046},{x:1060,pl:1052,pr:1076},{x:1100,pl:1092,pr:1116},{x:1114,pl:1106,pr:1126},{x:1145,pl:1137,pr:1161},{x:1175,pl:1167,pr:1190}],
-    flyers: [{x:20,fy:7*TILE,pw:8},{x:58,fy:5*TILE,pw:7},{x:70,fy:4*TILE,pw:6},{x:98,fy:5*TILE,pw:8},{x:132,fy:6*TILE,pw:7},{x:148,fy:4*TILE,pw:7},{x:172,fy:5*TILE,pw:7},{x:212,fy:4*TILE,pw:6},{x:228,fy:3*TILE,pw:7},{x:258,fy:5*TILE,pw:8},{x:310,fy:6*TILE,pw:7},{x:328,fy:4*TILE,pw:7},{x:354,fy:5*TILE,pw:7},{x:396,fy:4*TILE,pw:8},{x:416,fy:6*TILE,pw:6},{x:444,fy:5*TILE,pw:7},{x:482,fy:4*TILE,pw:7},{x:500,fy:3*TILE,pw:6},{x:528,fy:6*TILE,pw:7},{x:566,fy:4*TILE,pw:8},{x:586,fy:6*TILE,pw:6},{x:602,fy:5*TILE,pw:6},{x:635,fy:4*TILE,pw:7},{x:650,fy:6*TILE,pw:6},{x:680,fy:3*TILE,pw:8},{x:720,fy:5*TILE,pw:7},{x:740,fy:4*TILE,pw:6},{x:770,fy:6*TILE,pw:7},{x:808,fy:4*TILE,pw:8},{x:830,fy:3*TILE,pw:6},{x:860,fy:5*TILE,pw:7},{x:900,fy:4*TILE,pw:8},{x:920,fy:6*TILE,pw:6},{x:950,fy:5*TILE,pw:7},{x:990,fy:4*TILE,pw:8},{x:1010,fy:3*TILE,pw:6},{x:1040,fy:5*TILE,pw:7},{x:1080,fy:4*TILE,pw:8},{x:1100,fy:6*TILE,pw:6},{x:1130,fy:5*TILE,pw:7},{x:1162,fy:4*TILE,pw:8},{x:1180,fy:6*TILE,pw:6}],
+    // Goombas — on ground and on skybridges (skybridge ones at groundY-1 but their pl/pr keep them on the platform)
+    goombas: [
+      {x:8,pl:3,pr:22},{x:22,pl:15,pr:38},{x:38,pl:28,pr:55},{x:52,pl:44,pr:68},
+      {x:78,pl:68,pr:92},{x:95,pl:85,pr:108},{x:108,pl:98,pr:122},
+      {x:215,pl:208,pr:238},{x:232,pl:222,pr:252},{x:255,pl:245,pr:268},
+      {x:272,pl:262,pr:285},{x:302,pl:292,pr:318},{x:318,pl:308,pr:335},{x:332,pl:322,pr:348},
+      {x:362,pl:352,pr:378},{x:378,pl:368,pr:392},
+      {x:487,pl:478,pr:502},{x:500,pl:490,pr:516},{x:515,pl:505,pr:528},
+      {x:528,pl:518,pr:542},{x:555,pl:545,pr:568},{x:568,pl:558,pr:582},{x:580,pl:570,pr:595},
+      {x:608,pl:598,pr:618},{x:622,pl:612,pr:628},
+      {x:718,pl:708,pr:732},{x:732,pl:722,pr:745},{x:745,pl:735,pr:758},
+      {x:760,pl:750,pr:772},{x:786,pl:776,pr:798},{x:800,pl:790,pr:815},{x:815,pl:805,pr:828},
+      {x:842,pl:832,pr:858},{x:856,pl:846,pr:865},
+      {x:962,pl:952,pr:972},{x:975,pl:965,pr:985},{x:988,pl:978,pr:998},
+      {x:1002,pl:992,pr:1015},{x:1018,pl:1008,pr:1030},{x:1030,pl:1020,pr:1042},{x:1044,pl:1034,pr:1055},
+      {x:1115,pl:1105,pr:1128},{x:1128,pl:1118,pr:1140},{x:1142,pl:1132,pr:1154},
+      {x:1158,pl:1148,pr:1168},{x:1172,pl:1162,pr:1182},
+    ],
+    flyers: [
+      // Low bats over ground sections
+      {x:15,fy:6*TILE,pw:6},{x:42,fy:5*TILE,pw:7},{x:70,fy:4*TILE,pw:6},{x:100,fy:5*TILE,pw:6},
+      // Bats guarding the skybridges
+      {x:160,fy:2*TILE,pw:7},{x:170,fy:1*TILE,pw:6},{x:178,fy:2*TILE,pw:7},
+      {x:260,fy:5*TILE,pw:6},{x:305,fy:4*TILE,pw:6},{x:342,fy:5*TILE,pw:6},{x:380,fy:4*TILE,pw:6},
+      {x:430,fy:2*TILE,pw:6},{x:440,fy:1*TILE,pw:7},{x:450,fy:2*TILE,pw:6},
+      {x:518,fy:5*TILE,pw:6},{x:560,fy:4*TILE,pw:6},{x:596,fy:5*TILE,pw:7},{x:630,fy:4*TILE,pw:6},
+      {x:660,fy:2*TILE,pw:7},{x:672,fy:1*TILE,pw:8},{x:682,fy:2*TILE,pw:6},
+      {x:718,fy:5*TILE,pw:6},{x:758,fy:4*TILE,pw:7},{x:798,fy:5*TILE,pw:6},{x:838,fy:4*TILE,pw:6},
+      {x:888,fy:2*TILE,pw:6},{x:902,fy:1*TILE,pw:7},{x:914,fy:2*TILE,pw:6},
+      {x:960,fy:5*TILE,pw:6},{x:1000,fy:4*TILE,pw:7},{x:1040,fy:5*TILE,pw:6},
+      {x:1078,fy:2*TILE,pw:6},{x:1090,fy:1*TILE,pw:7},{x:1100,fy:2*TILE,pw:6},
+      {x:1130,fy:5*TILE,pw:7},{x:1158,fy:4*TILE,pw:6},{x:1174,fy:5*TILE,pw:7},
+    ],
   },
   // Level 2 — wide gaps, tall platforms
   {
