@@ -722,7 +722,7 @@ function update(dt) {
   if (player.homing && player.homingTarget) {
     const tg = player.homingTarget;
     if (tg.dead) {
-      player.homing = false; player.homingTarget = null;
+      player.homing = false; player.homingTarget = null; player.ballForm = true;
     } else {
       const tx = tg.x + tg.w / 2, ty = tg.y + tg.h / 2;
       const px = player.x + player.w / 2, py = player.y + player.h / 2;
