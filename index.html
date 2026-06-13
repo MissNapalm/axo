@@ -1277,7 +1277,7 @@ function drawPlayer() {
   ctx.scale(scaleX, 1);
   ctx.imageSmoothingEnabled = false;
 
-  const dh = player.h * 1.8;
+  const dh = player.h * 1.0;
   const dw = Math.round(dh * (WALK_FW / WALK_FH));
 
   if (walkSheet.complete && walkSheet.naturalWidth > 0) {
@@ -1389,7 +1389,7 @@ function drawDeathAnimation() {
   ctx.translate(sx + player.w / 2, player.y + player.h);
   ctx.rotate(Math.PI);
   if (walkSheet.complete && walkSheet.naturalWidth > 0) {
-    const dh = player.h * 1.8;
+    const dh = player.h * 1.0;
     const dw = Math.round(dh * (WALK_FW / WALK_FH));
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(walkSheet, 0, 0, WALK_FW, WALK_FH, -dw/2, 0, dw, dh);
