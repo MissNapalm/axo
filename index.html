@@ -631,7 +631,7 @@ function buildSolids() {
       solids.push({ x: tx * TILE, y: ty * TILE, w: TILE, h: TILE, type: 'ground', tx, ty });
   }
   for (const p of lv.platforms) {
-    const py = Math.max(p.y, 3); // never place blocks in top 2 tile rows
+    const py = Math.max(p.y, 5); // clamp blocks to mid-height — no high blocks
     for (let i = 0; i < p.w; i++) {
       const tx = p.x + i, key = `${tx}_${py}`;
       solids.push({ x: tx * TILE, y: py * TILE, w: TILE, h: TILE, type: p.t, tx, ty: py, key });
@@ -671,8 +671,8 @@ function loadLevel(n) {
     const isGunner = lvl >= 1 && i % 3 === 2;
     const type = isGunner ? 'gunner' : (lvl >= 1 && i % 3 === 2) ? 'shocker' : 'normal';
     const h = isGunner ? 2 : 3;
-    // Minimum y = 4*TILE so bats never hug the ceiling
-    let safeY = Math.max(f.fy, 4 * TILE);
+    // Minimum y = 5*TILE so bats stay in mid-height range
+    let safeY = Math.max(f.fy, 5 * TILE);
     // Push down if spawning inside any platform
     let changed = true;
     while (changed) {
@@ -837,6 +837,7 @@ function spawnShockerBurst(g) {
 
 function damageEnemy(g, dmg) {
   if (g.dead) return false;
+  if (player.frenzyTimer > 0) dmg = g.hp; // one-shot all enemies in frenzy
   g.hp -= dmg;
   if (g.hp <= 0) {
     g.dead = true; g.deadTimer = 40;
@@ -3282,8 +3283,8 @@ function drawFlagPole() {
 }
 
 function drawPlayer() {
-  // Flicker every 4 frames while invincible
-  if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
+  // Flicker every 4 frames while invincible — but not during frenzy
+  if (player.frenzyTimer <= 0 && player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
   ctx.save();
   // Frenzy: periodic white flash every ~40 frames
