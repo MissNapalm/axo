@@ -3134,6 +3134,7 @@ function update(dt) {
       } else if (player.spinning || (player.vy > 0 && !player.homing && player.y + player.h < g.y + g.h / 2 + 10)) {
         damageEnemy(g, 1);
         player.vy = -6;
+        player.onGround = false;
       } else if (player.homing) {
         // homing handled separately
       } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
