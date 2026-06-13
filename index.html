@@ -130,8 +130,8 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 const walkSheet   = new Image(); walkSheet.src   = 'walk_sheet.png';
-const WALK_FRAMES = 27;  // indices 0-26 = walk cycle, index 27 = air
-const AIR_FRAME   = 27;
+const WALK_FRAMES = 27;  // indices 0-26 = walk cycle
+const AIR_FRAME   = 13;  // frame 14 (0-based 13) — leaping pose, reused as air
 const WALK_FW     = 177; // frame width in sheet
 const WALK_FH     = 128; // frame height in sheet
 let   walkFrame   = 0;
