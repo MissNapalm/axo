@@ -433,6 +433,7 @@ const player = {
   homing: false,
   homingTarget: null,
   homingUsed: false,
+  ballForm: false,
   dashUsedUp: false,
   dashUsedH: false,
   dashFrames: 0,    // frames remaining in active dash
@@ -731,6 +732,7 @@ function update(dt) {
         const killed = damageEnemy(tg, 1);
         if (killed) { comboCount++; comboTimer = 120; }
         player.homing = false; player.homingTarget = null;
+        player.ballForm = true;
         player.vy = -CFG.jump1 * 0.9;
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false;
@@ -760,7 +762,7 @@ function update(dt) {
   }
 
   // Spin during homing or after a dash
-  if (player.spinning || player.homing) {
+  if (player.spinning || player.homing || player.ballForm) {
     player.spinAngle += player.homing ? 28 : 18;
     if (Math.random() < 0.5) spawnTrail(player.x + player.w / 2, player.y + player.h / 2);
   }
@@ -802,6 +804,7 @@ function update(dt) {
           player.lastLandTime = now;
           spawnDust(player.x + player.w / 2, player.y + player.h);
           player.spinning = false;
+          player.ballForm = false;
           player.homing = false; player.homingTarget = null;
           player.dashFrames = 0;
           comboCount = 0; comboTimer = 0;
@@ -1282,18 +1285,18 @@ function drawPlayer() {
   ctx.save();
   ctx.translate(sx + player.w / 2, player.y + player.h);
   const scaleX = player.dir === -1 ? -1 : 1;
-  if (!player.homing) ctx.rotate(CFG.spriteRot * Math.PI / 180);
-  if (player.spinning || player.homing) ctx.rotate((player.spinAngle * Math.PI) / 180);
   ctx.scale(scaleX, 1);
+  // Rotation after scale so direction flip doesn't invert the angle
+  if (!player.homing && !player.ballForm) ctx.rotate(CFG.spriteRot * Math.PI / 180);
+  if (player.spinning || player.homing || player.ballForm) ctx.rotate((player.spinAngle * Math.PI) / 180);
   ctx.imageSmoothingEnabled = false;
 
   const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
 
-  if (player.homing && ballImg.complete && ballImg.naturalWidth > 0) {
-    // Ball form during homing attack
-    const bdw = Math.round(dh * (ballImg.naturalWidth / ballImg.naturalHeight));
-    ctx.drawImage(ballImg, -bdw / 2, -dh + footOffset, bdw, dh);
+  if ((player.homing || player.ballForm) && ballImg.complete && ballImg.naturalWidth > 0) {
+    // Ball form during and after homing until landing — draw as square
+    ctx.drawImage(ballImg, -dh / 2, -dh + footOffset, dh, dh);
   } else if (walkSheet.complete && walkSheet.naturalWidth > 0) {
     const dw = Math.round(dh * (WALK_FW / WALK_FH));
     let frameIdx;
