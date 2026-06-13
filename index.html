@@ -118,6 +118,10 @@
     <input type="range" id="s-spriteOffset" min="-20" max="20" step="1">
     <span class="val" id="v-spriteOffset"></span>
   </label>
+  <label><span class="lbl">Ball size (px)</span>
+    <input type="range" id="s-ballSize" min="20" max="120" step="2">
+    <span class="val" id="v-ballSize"></span>
+  </label>
 
   <hr>
   <h3 style="margin-bottom:8px">⌨ KEY BINDINGS</h3>
@@ -159,6 +163,7 @@ const DEFAULTS = {
   axoSize: 44,
   spriteRot: 20,
   spriteOffset: 4,
+  ballSize: 80,
 };
 
 function loadCFG() {
@@ -1285,7 +1290,7 @@ function drawPlayer() {
   const footOffset = CFG.spriteOffset;
 
   if ((player.homing || player.ballForm) && ballImg.complete && ballImg.naturalWidth > 0) {
-    const bd = 80; // matches ball_scaled.png exactly — no browser scaling needed
+    const bd = CFG.ballSize;
     // Translate to ball center (hitbox center), rotate around it
     ctx.translate(sx + player.w / 2, player.y + player.h / 2);
     ctx.rotate((player.spinAngle * Math.PI) / 180);
@@ -1546,6 +1551,7 @@ const sliders = [
   { id: 's-size',         vid: 'v-size',         key: 'axoSize',      fmt: v => v + 'px'     },
   { id: 's-spriteRot',    vid: 'v-spriteRot',    key: 'spriteRot',    fmt: v => Math.round(v) + '°' },
   { id: 's-spriteOffset', vid: 'v-spriteOffset', key: 'spriteOffset', fmt: v => Math.round(v) + 'px' },
+  { id: 's-ballSize',     vid: 'v-ballSize',     key: 'ballSize',     fmt: v => Math.round(v) + 'px' },
 ];
 
 function syncSliders() {
