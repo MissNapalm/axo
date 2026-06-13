@@ -2194,14 +2194,14 @@ function update(dt) {
 
   // Space/jump while airborne — homing attack if enemy nearby
   // Frenzy bypasses the one-per-jump limit
-  const homingAllowed = player.frenzyTimer > 0 || (player.homingCount < 3 && !player.homingUsed);
+  const homingAllowed = player.homingCount < 3 && !player.homingUsed;
   if (jumpJustPressed && !player.onGround && !player.homing && homingAllowed) {
     const target = nearestLiveGoomba(player.frenzyTimer > 0 ? HOMING_RANGE : 130);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
       player.homingUsed = true;
-      if (player.frenzyTimer <= 0) player.homingCount++;
+      player.homingCount++;
       target.lockFlash = 10;
     }
   }
