@@ -1270,7 +1270,7 @@ function drawPlayer() {
   if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
   ctx.save();
-  ctx.translate(sx + player.w / 2, player.y + player.h / 2);
+  ctx.translate(sx + player.w / 2, player.y + player.h);
   const scaleX = player.dir === -1 ? -1 : 1;
   if (player.spinning || player.homing) ctx.rotate((player.spinAngle * Math.PI) / 180);
   ctx.scale(scaleX, 1);
@@ -1297,7 +1297,7 @@ function drawPlayer() {
     }
     ctx.drawImage(walkSheet,
       frameIdx * WALK_FW, 0, WALK_FW, WALK_FH,
-      -dw / 2, -dh / 2, dw, dh);
+      -dw / 2, -dh, dw, dh);
   } else {
     ctx.fillStyle = '#ff69b4';
     ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
@@ -1384,13 +1384,13 @@ function drawDeathAnimation() {
   player.y += player.vy; player.vy += CFG.gravity;
   const sx = player.x - camera;
   ctx.save();
-  ctx.translate(sx + player.w / 2, player.y + player.h / 2);
+  ctx.translate(sx + player.w / 2, player.y + player.h);
   ctx.rotate(Math.PI);
   if (walkSheet.complete && walkSheet.naturalWidth > 0) {
     const dh = player.h * 1.8;
     const dw = Math.round(dh * (WALK_FW / WALK_FH));
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(walkSheet, 0, 0, WALK_FW, WALK_FH, -dw/2, -dh/2, dw, dh);
+    ctx.drawImage(walkSheet, 0, 0, WALK_FW, WALK_FH, -dw/2, 0, dw, dh);
   }
   ctx.restore();
 }
