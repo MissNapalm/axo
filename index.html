@@ -1343,7 +1343,7 @@ const wraith = {
 const WARDEN_MAX_HP  = 16;
 const WARDEN_ARENA_X = 10 * TILE;
 const WARDEN_ARENA_R = 135 * TILE;
-const WARDEN_GROUND  = (groundY - 1) * TILE;
+const WARDEN_GROUND  = groundY * TILE;
 
 const warden = {
   active: false,
@@ -1361,6 +1361,7 @@ const warden = {
   shockwaves: [],
   rocks: [],
   invulTimer: 0,
+  homingCooldown: 0,
 };
 
 function damageWraith(dmg) {
@@ -1880,6 +1881,8 @@ function damageWarden(dmg) {
   warden.hitFlash = 20;
   warden.shakeX = 8;
   score += 500; updateHUD();
+  // Each hit fills 1/5 of the frenzy bar (12 kills total → 2.4 per hit)
+  player.frenzyKills = Math.min(player.frenzyKills + 2.4, 12);
   if (warden.hp <= 0) {
     warden.hp = 0;
     warden.dead = true; warden.deadTimer = 200;
@@ -1910,6 +1913,7 @@ function updateWarden() {
   if (warden.hitFlash > 0) warden.hitFlash--;
   if (warden.shakeX > 0) warden.shakeX = Math.max(0, warden.shakeX - 1.5);
   if (warden.invulTimer > 0) warden.invulTimer--;
+  if (warden.homingCooldown > 0) warden.homingCooldown--;
 
   const px = player.x + player.w / 2;
   const wx = warden.x + warden.w / 2;
@@ -2034,12 +2038,28 @@ function updateWarden() {
       damageWarden(1);
       player.vx = -Math.sign(player.vx) * 10; player.vy = -7;
       player.dashFrames = 0; player.onGround = false;
+      warden.homingCooldown = 90; // brief cooldown after dash hit too
     } else if (player.homing && player.homingTarget === warden) {
-      damageWarden(1);
-      player.homing = false; player.homingTarget = null; player.ballForm = true;
-      player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
-      player.vx = player.dir * CFG.moveSpeed * 1.5;
-      player.homingUsed = false; comboCount++; comboTimer = 120;
+      const frenzy = player.frenzyTimer > 0;
+      if (!frenzy && warden.homingCooldown > 0) {
+        // Block the home in normal mode — bounce player off
+        player.homing = false; player.homingTarget = null;
+        player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -7;
+        hurtPlayer(1); player.invincible = 60;
+        if (hp <= 0) { killPlayer(); return; }
+      } else {
+        damageWarden(1);
+        player.homing = false; player.homingTarget = null; player.ballForm = true;
+        player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
+        player.vx = player.dir * CFG.moveSpeed * 1.5;
+        player.homingUsed = false; comboCount++; comboTimer = 120;
+        warden.homingCooldown = frenzy ? 0 : 120; // 2s cooldown in normal mode
+      }
+    } else if (warden.state === 'charge' && player.invincible === 0) {
+      // Charge attack damages player
+      hurtPlayer(1); player.invincible = 80;
+      player.vy = -9; player.vx = (player.x < wx ? -1 : 1) * 13;
+      if (hp <= 0) { killPlayer(); return; }
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
       hurtPlayer(1); player.invincible = 80;
       player.vy = -9; player.vx = (player.x < wx ? -1 : 1) * 11;
