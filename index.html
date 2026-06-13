@@ -570,6 +570,7 @@ const HOMING_RANGE = 300; // px
 const HOMING_SPEED = 14;
 
 let prevJumpKey = false;
+let prevUpKey   = false;
 let prevEKey = false;
 
 function nearestLiveGoomba() {
@@ -595,9 +596,12 @@ function update(dt) {
   const now = performance.now();
   const goLeft  = keys[KEYS.left]  || false;
   const goRight = keys[KEYS.right] || false;
-  const jumpKey = (keys[KEYS.jump] || keys[KEYS.up]) || false;
-  const jumpJustPressed = jumpKey && !prevJumpKey;
+  // Edge-detect only on the dedicated jump key; Up key also triggers jump but only on fresh press
+  const jumpKey = keys[KEYS.jump] || false;
+  const upKey   = keys[KEYS.up]   || false;
+  const jumpJustPressed = (jumpKey && !prevJumpKey) || (upKey && !prevUpKey);
   prevJumpKey = jumpKey;
+  prevUpKey   = upKey;
 
   const eKey = keys[KEYS.dash] || false;
   const eJustPressed = eKey && !prevEKey;
