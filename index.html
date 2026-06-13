@@ -481,7 +481,8 @@ const player = {
   homing: false,
   homingTarget: null,
   homingUsed: false,
-  frenzyTimer: 0,   // frames remaining on frenzy power-up (900 = 15s)
+  frenzyTimer: 0,   // frames remaining on frenzy (900 = 15s)
+  frenzyKills: 0,   // kills toward next frenzy (resets at 10)
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -557,15 +558,7 @@ function loadLevel(n) {
   });
   heartPickups = [];
   projectiles  = [];
-  // Scatter 2-3 frenzy crates across non-boss levels
-  powerBoxes = [];
-  if (!lv.isBossLevel) {
-    const count = 2 + (n % 2); // 2 or 3 per level
-    for (let i = 0; i < count; i++) {
-      const px = (80 + i * 380 + Math.floor(Math.random() * 160)) * TILE;
-      powerBoxes.push({ x: px, y: (groundY - 1) * TILE - TILE, w: TILE, h: TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 });
-    }
-  }
+  powerBoxes   = [];
 
   // Boss setup
   boss.active = false;
@@ -609,7 +602,7 @@ function loadLevel(n) {
     vx: 0, vy: 0,
     onGround: false, jumping: false,
     homing: false, homingTarget: null, homingUsed: false,
-    frenzyTimer: 0,
+    frenzyTimer: 0, frenzyKills: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: false, dashUsedV: false,
     invincible: 0, dead: false, wonSlide: false,
@@ -718,6 +711,16 @@ function damageEnemy(g, dmg) {
     playSound('hit', 0.6);
     if (Math.random() < 0.28) {
       heartPickups.push({ x: g.x + g.w / 2 - 10, y: g.y, vx: (Math.random() - 0.5) * 3, vy: -5, collected: false, bobTimer: 0 });
+    }
+    // Frenzy kill counter
+    if (player.frenzyTimer <= 0) {
+      player.frenzyKills++;
+      if (player.frenzyKills >= 10) {
+        player.frenzyKills = 0;
+        player.frenzyTimer = 900;
+        player.homingUsed = false;
+        spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
+      }
     }
     return true; // killed
   }
@@ -2264,20 +2267,8 @@ function update(dt) {
     }
   }
 
-  // Frenzy power-up tick
+  // Frenzy tick
   if (player.frenzyTimer > 0) player.frenzyTimer--;
-
-  // Power boxes
-  for (const pb of powerBoxes) {
-    if (pb.collected) continue;
-    pb.bobTimer += 0.05;
-    if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
-      pb.collected = true;
-      player.frenzyTimer = 900;
-      player.homingUsed = false;
-      spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
-    }
-  }
 
   // Heart pickups
   const groundFloor = (groundY - 1) * TILE;
@@ -2417,8 +2408,7 @@ function hitBlock(s) {
 }
 
 function hurtPlayer(dmg = 1) {
-  // Frenzy: 50% chance to block damage entirely
-  if (player.frenzyTimer > 0 && Math.random() < 0.5) return;
+  if (player.frenzyTimer > 0) return; // infinite health during frenzy
   hp -= dmg; updateHPBar();
 }
 
@@ -3206,7 +3196,6 @@ function loop(ts) {
   drawPlatforms();
   drawCoins();
   drawHeartPickups();
-  drawPowerBoxes();
   drawGoombas();
   drawBoss();
   drawWraith();
@@ -3232,23 +3221,38 @@ function loop(ts) {
     ctx.restore();
   }
 
-  // Frenzy bar
-  if (player.frenzyTimer > 0) {
-    const frac = player.frenzyTimer / 900;
+  // Frenzy kill counter / active bar
+  {
     const bw = 120, bh = 8, bx = W / 2 - bw / 2, by = H - 22;
-    const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-    ctx.fillStyle = `rgba(80,220,255,${pulse})`;
-    ctx.fillRect(bx, by, bw * frac, bh);
-    ctx.strokeStyle = 'rgba(80,220,255,0.8)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
-    ctx.font = 'bold 9px monospace';
-    ctx.fillStyle = '#50dcff';
-    ctx.textAlign = 'center';
-    ctx.fillText('FRENZY', W / 2, by - 3);
+    if (player.frenzyTimer > 0) {
+      // Active: drain bar pulses cyan
+      const frac = player.frenzyTimer / 900;
+      const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
+      ctx.fillStyle = `rgba(80,220,255,${pulse})`;
+      ctx.fillRect(bx, by, bw * frac, bh);
+      ctx.strokeStyle = 'rgba(80,220,255,0.8)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#50dcff';
+      ctx.textAlign = 'center';
+      ctx.fillText('FRENZY', W / 2, by - 3);
+    } else {
+      // Building: show kill progress toward 10
+      const frac = player.frenzyKills / 10;
+      ctx.fillStyle = 'rgba(255,180,40,0.8)';
+      ctx.fillRect(bx, by, bw * frac, bh);
+      ctx.strokeStyle = 'rgba(255,180,40,0.6)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#ffb428';
+      ctx.textAlign = 'center';
+      ctx.fillText(`KILLS ${player.frenzyKills}/10`, W / 2, by - 3);
+    }
     ctx.restore();
   }
 
