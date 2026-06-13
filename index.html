@@ -594,6 +594,7 @@ const player = {
   homing: false,
   homingTarget: null,
   homingUsed: false,
+  homingCount: 0,   // air homes used this jump (max 3 in normal, unlimited in frenzy)
   frenzyTimer: 0,   // frames remaining on frenzy (900 = 15s)
   frenzyKills: 0,   // kills toward next frenzy (resets at 10)
   ballForm: false,
@@ -714,7 +715,7 @@ function loadLevel(n) {
     x: TILE * 3, y: (groundY - 3) * TILE,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null, homingUsed: false,
+    homing: false, homingTarget: null, homingUsed: false, homingCount: 0,
     frenzyTimer: 0, frenzyKills: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: false, dashUsedV: false,
@@ -2193,12 +2194,14 @@ function update(dt) {
 
   // Space/jump while airborne — homing attack if enemy nearby
   // Frenzy bypasses the one-per-jump limit
-  if (jumpJustPressed && !player.onGround && !player.homing && (!player.homingUsed || player.frenzyTimer > 0)) {
+  const homingAllowed = player.frenzyTimer > 0 || (player.homingCount < 3 && !player.homingUsed);
+  if (jumpJustPressed && !player.onGround && !player.homing && homingAllowed) {
     const target = nearestLiveGoomba(player.frenzyTimer > 0 ? HOMING_RANGE : 130);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
       player.homingUsed = true;
+      if (player.frenzyTimer <= 0) player.homingCount++;
       target.lockFlash = 10;
     }
   }
@@ -2267,7 +2270,7 @@ function update(dt) {
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
         const killed = damageEnemy(tg, 1);
-        if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; }
+        if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
         player.vy = Math.min(player.vy, -CFG.jump1 * 0.5);
@@ -2295,6 +2298,7 @@ function update(dt) {
     player.vy = -CFG.jump1;
     player.onGround = false;
     player.homingUsed = false;
+    player.homingCount = 0;
     playSound('jump', 0.5);
   }
 
@@ -2353,7 +2357,7 @@ function update(dt) {
           comboCount = 0; comboTimer = 0;
         }
         player.onGround = true;
-        player.homingUsed = false;
+        player.homingUsed = false; player.homingCount = 0;
         player.dashUsedUp = false; player.dashUsedH = false;
       } else if (player.vy < 0) {
         player.y = s.y + s.h;
@@ -2364,8 +2368,15 @@ function update(dt) {
     }
   }
 
-  // Pit death
-  if (player.y > H + 200) { killPlayer(); return; }
+  // Pit death — frenzy wraps to ceiling instead
+  if (player.y > H + 200) {
+    if (player.frenzyTimer > 0) {
+      player.y = -player.h;
+      player.vy = Math.abs(player.vy) * 0.5;
+    } else {
+      killPlayer(); return;
+    }
+  }
 
   // Coins
   for (const coin of coins) {
