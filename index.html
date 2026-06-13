@@ -63,7 +63,21 @@
     <input type="range" id="zoom-slider" min="0.3" max="2.0" step="0.05" value="1.40">
     <span id="zoom-val">1.00x</span>
   </div>
-  <button id="level-btn" style="background:#111;border:1px solid #446;color:#8af;font-family:monospace;font-size:12px;padding:3px 8px;cursor:pointer">LVL <span id="level-num">1</span></button>
+  <select id="level-btn" style="background:#111;border:1px solid #446;color:#8af;font-family:monospace;font-size:12px;padding:3px 6px;cursor:pointer">
+    <option value="0">LVL 1</option>
+    <option value="1">LVL 2</option>
+    <option value="2">LVL 3</option>
+    <option value="3">LVL 4</option>
+    <option value="4">LVL 5</option>
+    <option value="5">LVL 6</option>
+    <option value="6">LVL 7</option>
+    <option value="7">LVL 8</option>
+    <option value="8">LVL 9</option>
+    <option value="9">LVL 10</option>
+    <option value="10">LVL 11</option>
+    <option value="11">BOSS: LEVIATHAN</option>
+    <option value="12">BOSS: WRAITH</option>
+  </select>
 </div>
 <canvas id="c" width="800" height="450"></canvas>
 
@@ -388,6 +402,41 @@ const LEVELS = [
     goombas: Array.from({length:60},(_,i)=>({x:8+i*20,pl:2+i*20,pr:28+i*20})),
     flyers: Array.from({length:45},(_,i)=>({x:6+i*26,fy:(2+i%5)*TILE,pw:5+i%3})),
   },
+  // Level 12 — BOSS
+  // Level 12 — BOSS: LEVIATHAN
+  {
+    isBossLevel: true,
+    bossType: 'leviathan',
+    gaps: [],
+    platforms: [
+      {x:8,y:9,w:12,t:'brick'}, {x:25,y:6,w:8,t:'qblock'}, {x:38,y:3,w:6,t:'brick'},
+      {x:52,y:7,w:7,t:'brick'}, {x:65,y:4,w:6,t:'qblock'}, {x:78,y:2,w:5,t:'brick'},
+      {x:90,y:8,w:8,t:'qblock'}, {x:105,y:5,w:7,t:'brick'}, {x:118,y:2,w:6,t:'qblock'},
+      {x:20,y:9,w:1,t:'hblock'},{x:60,y:5,w:1,t:'hblock'},{x:100,y:3,w:1,t:'hblock'},
+    ],
+    pipes: [],
+    coinDefs: [],
+    goombas: [],
+    flyers: [],
+  },
+  // Level 13 — BOSS: ABYSSAL WRAITH
+  {
+    isBossLevel: true,
+    bossType: 'wraith',
+    gaps: [],
+    platforms: [
+      // Open arena — wide spaced platforms forcing aerial movement
+      {x:5,y:10,w:8,t:'brick'},  {x:18,y:7,w:5,t:'brick'},  {x:30,y:4,w:5,t:'qblock'},
+      {x:44,y:8,w:5,t:'brick'},  {x:56,y:5,w:5,t:'qblock'}, {x:68,y:2,w:5,t:'brick'},
+      {x:80,y:7,w:5,t:'brick'},  {x:92,y:4,w:5,t:'qblock'}, {x:104,y:8,w:5,t:'brick'},
+      {x:116,y:5,w:5,t:'qblock'},{x:128,y:2,w:5,t:'brick'},
+      {x:15,y:8,w:1,t:'hblock'},{x:55,y:4,w:1,t:'hblock'},{x:95,y:3,w:1,t:'hblock'},{x:120,y:4,w:1,t:'hblock'},
+    ],
+    pipes: [],
+    coinDefs: [],
+    goombas: [],
+    flyers: [],
+  },
 ];
 
 let currentLevel = parseInt(localStorage.getItem('axo_level') || '0');
@@ -480,6 +529,31 @@ function loadLevel(n) {
   heartPickups = [];
   projectiles  = [];
 
+  // Boss setup
+  boss.active = false;
+  wraith.active = false;
+  if (lv.isBossLevel && lv.bossType === 'leviathan') {
+    Object.assign(boss, {
+      active: true, dead: false, deadTimer: 0,
+      hp: BOSS_MAX_HP, maxHp: BOSS_MAX_HP,
+      phase: 1, state: 'idle', stateTimer: 90,
+      x: 60 * TILE, y: 4 * TILE, vx: 0, vy: 0, dir: -1,
+      hitFlash: 0, lockFlash: 0, shakeX: 0, eyePulse: 0,
+      orbs: [], orbCooldown: 0, ringCooldown: 0,
+      teleportAlpha: 1, teleportTarget: { x: 0, y: 0 }, chargeSpeed: 0,
+    });
+  } else if (lv.isBossLevel && lv.bossType === 'wraith') {
+    Object.assign(wraith, {
+      active: true, dead: false, deadTimer: 0,
+      hp: WRAITH_MAX_HP, maxHp: WRAITH_MAX_HP,
+      phase: 1, state: 'idle', stateTimer: 120,
+      x: 70 * TILE, y: 3 * TILE, vx: 0, vy: 0, dir: -1,
+      hitFlash: 0, lockFlash: 0, shakeX: 0, eyePulse: 0, invulTimer: 0,
+      dashWalls: [], gravZones: [], clones: [], shockwaves: [], tentacles: [],
+      telegraphTimer: 0, telegraphType: '',
+    });
+  }
+
   // reset player
   Object.assign(player, {
     x: TILE * 3, y: (groundY - 3) * TILE,
@@ -496,8 +570,8 @@ function loadLevel(n) {
   won = false; dead = false;
   score = 0; coinCount = 0;
 
-  const btn = document.getElementById('level-num');
-  if (btn) btn.textContent = currentLevel + 1;
+  const sel = document.getElementById('level-btn');
+  if (sel) sel.value = currentLevel;
 }
 
 function rectsOverlap(a, b) {
@@ -641,10 +715,878 @@ let prevJumpKey = false;
 let prevUpKey   = false;
 let prevEKey = false;
 
+// ── Boss ──────────────────────────────────────────────────────────────────────
+const BOSS_MAX_HP  = 18;
+const BOSS_ARENA_X = 15 * TILE;   // left wall of arena
+const BOSS_ARENA_R = 125 * TILE;  // right wall of arena
+const BOSS_GROUND  = (groundY - 1) * TILE; // y when "standing"
+
+const boss = {
+  active: false,
+  x: 60 * TILE, y: 4 * TILE,
+  w: 72, h: 72,
+  hp: BOSS_MAX_HP, maxHp: BOSS_MAX_HP,
+  phase: 1,            // 1 / 2 / 3
+  state: 'idle',       // idle | teleport | charge | fly | summon | slam | dead
+  stateTimer: 0,
+  vx: 0, vy: 0,
+  dir: -1,
+  hitFlash: 0,
+  lockFlash: 0,
+  dead: false,
+  deadTimer: 0,
+  flying: true,        // so homing targets it
+  // teleport
+  teleportAlpha: 0,
+  teleportTarget: { x: 0, y: 0 },
+  // charge
+  chargeSpeed: 0,
+  // slam weak points (phase 3) — small orbs that orbit the boss and must be homed into
+  orbs: [],
+  orbCooldown: 0,
+  // ring projectile burst cooldown
+  ringCooldown: 0,
+  // eye glow pulse
+  eyePulse: 0,
+  // shake when hit
+  shakeX: 0,
+};
+
+function bossPhaseFromHp() {
+  const ratio = boss.hp / boss.maxHp;
+  if (ratio > 0.6) return 1;
+  if (ratio > 0.3) return 2;
+  return 3;
+}
+
+function damageBoss(dmg) {
+  if (boss.dead || boss.hitFlash > 0) return false;
+  boss.hp -= dmg;
+  boss.hitFlash = 20;
+  boss.shakeX = 8;
+  score += 500; updateHUD();
+  if (boss.hp <= 0) {
+    boss.hp = 0;
+    boss.dead = true;
+    boss.deadTimer = 180;
+    boss.state = 'dead';
+    spawnExplosion(boss.x + boss.w / 2, boss.y + boss.h / 2, true);
+    comboCount += 5; comboTimer = 180;
+    score += 5000; updateHUD();
+    return true;
+  }
+  spawnExplosion(boss.x + boss.w / 2, boss.y + boss.h / 2, true);
+  return false;
+}
+
+function bossSpawnOrbs() {
+  boss.orbs = [];
+  const count = boss.phase === 3 ? 6 : 4;
+  for (let i = 0; i < count; i++) {
+    boss.orbs.push({
+      angle: (i / count) * Math.PI * 2,
+      speed: 0.04 + boss.phase * 0.01,
+      radius: 55 + i * 8,
+      dead: false, deadTimer: 0,
+      hp: 1, maxHp: 1, hitFlash: 0, lockFlash: 0,
+      flying: true,
+      // computed each frame:
+      x: 0, y: 0, w: 20, h: 20,
+    });
+  }
+}
+
+function updateBoss() {
+  if (!boss.active) return;
+  if (boss.dead) {
+    boss.deadTimer--;
+    if (boss.deadTimer <= 0) { won = true; player.wonSlide = true; score += 1000; updateHUD(); }
+    return;
+  }
+
+  boss.phase = bossPhaseFromHp();
+  if (boss.hitFlash > 0) boss.hitFlash--;
+  if (boss.shakeX > 0) boss.shakeX = Math.max(0, boss.shakeX - 1.2);
+  boss.eyePulse += 0.08;
+
+  // Update orbiting orbs
+  for (let i = boss.orbs.length - 1; i >= 0; i--) {
+    const o = boss.orbs[i];
+    if (o.dead) { o.deadTimer--; if (o.deadTimer <= 0) boss.orbs.splice(i, 1); continue; }
+    o.angle += o.speed;
+    o.x = boss.x + boss.w / 2 + Math.cos(o.angle) * o.radius - o.w / 2;
+    o.y = boss.y + boss.h / 2 + Math.sin(o.angle) * o.radius - o.h / 2;
+    if (o.hitFlash > 0) o.hitFlash--;
+    if (o.lockFlash > 0) o.lockFlash--;
+
+    // Player homing into orb
+    if (player.homingTarget === o) {
+      const tx = o.x + o.w / 2, ty = o.y + o.h / 2;
+      const px = player.x + player.w / 2, py = player.y + player.h / 2;
+      const dx = tx - px, dy = ty - py;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 14) {
+        o.dead = true; o.deadTimer = 30;
+        player.homing = false; player.homingTarget = null;
+        player.ballForm = true;
+        player.vy = Math.min(player.vy, -CFG.jump1 * 0.6);
+        player.vx = player.dir * CFG.moveSpeed * 1.5;
+        player.spinning = false; player.homingUsed = false;
+        comboCount++; comboTimer = 120;
+        // Each orb death damages boss
+        damageBoss(1);
+      } else {
+        player.vx = (dx / dist) * HOMING_SPEED;
+        player.vy = (dy / dist) * HOMING_SPEED;
+        if (player.vx > 0) player.dir = 1; else player.dir = -1;
+        spawnTrail(player.x + player.w / 2, player.y + player.h / 2);
+      }
+    }
+
+    // Orb damages player on contact
+    if (!o.dead && player.invincible === 0 && !player.homing && !player.ballForm && !player.dashFrames) {
+      if (rectsOverlap({ x: o.x + 3, y: o.y + 3, w: o.w - 6, h: o.h - 6 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+        hp--; updateHPBar(); player.invincible = 80;
+        player.vy = -8; player.vx = (player.x < o.x ? -1 : 1) * 9;
+        if (hp <= 0) { killPlayer(); return; }
+      }
+    }
+  }
+  // All orbs gone — boss takes direct hit vulnerability window handled via state machine below
+
+  boss.stateTimer--;
+
+  // ── State machine ───────────────────────────────────────────────────────────
+  const px = player.x + player.w / 2, py = player.y + player.h / 2;
+  const bx = boss.x + boss.w / 2, by = boss.y + boss.h / 2;
+
+  if (boss.state === 'idle') {
+    // Hover gently
+    boss.vy = Math.sin(performance.now() / 400) * 0.5;
+    boss.y += boss.vy;
+    boss.dir = px < bx ? -1 : 1;
+
+    if (boss.stateTimer <= 0) {
+      // Choose next attack based on phase
+      const r = Math.random();
+      if (boss.phase === 1) {
+        if (r < 0.4) { boss.state = 'teleport'; boss.stateTimer = 30; }
+        else if (r < 0.7) { boss.state = 'summon'; boss.stateTimer = 20; }
+        else { boss.state = 'ring'; boss.stateTimer = 10; }
+      } else if (boss.phase === 2) {
+        if (r < 0.35) { boss.state = 'charge'; boss.stateTimer = 20; boss.chargeSpeed = 0; }
+        else if (r < 0.65) { boss.state = 'ring'; boss.stateTimer = 10; }
+        else { boss.state = 'summon'; boss.stateTimer = 20; }
+      } else {
+        if (r < 0.3) { boss.state = 'slam'; boss.stateTimer = 30; }
+        else if (r < 0.6) { boss.state = 'ring'; boss.stateTimer = 8; }
+        else { boss.state = 'summon'; boss.stateTimer = 15; }
+      }
+    }
+
+  } else if (boss.state === 'teleport') {
+    // Flash out, reappear above player
+    boss.teleportAlpha = Math.max(0, boss.stateTimer / 30);
+    if (boss.stateTimer <= 0) {
+      const tx = Math.max(BOSS_ARENA_X, Math.min(BOSS_ARENA_R - boss.w, px - boss.w / 2 + (Math.random() - 0.5) * 180));
+      boss.x = tx;
+      boss.y = py - 120 - Math.random() * 80;
+      boss.y = Math.max(TILE, boss.y);
+      boss.teleportAlpha = 1;
+      boss.state = 'idle';
+      boss.stateTimer = 60 + Math.floor(Math.random() * 40);
+      // Fire 8-way burst on reappear
+      for (let a = 0; a < 8; a++) {
+        const ang = (a / 8) * Math.PI * 2;
+        const spd = 3.5 + boss.phase;
+        projectiles.push({ x: bx, y: by, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 110, flying: true });
+      }
+    }
+
+  } else if (boss.state === 'summon') {
+    if (boss.stateTimer === 19) bossSpawnOrbs();
+    boss.vy = Math.sin(performance.now() / 300) * 0.3;
+    boss.y += boss.vy;
+    if (boss.stateTimer <= 0) {
+      boss.state = 'idle';
+      boss.stateTimer = 80 + Math.floor(Math.random() * 60);
+    }
+
+  } else if (boss.state === 'ring') {
+    // Fire concentric rings of projectiles aimed at player
+    if (boss.stateTimer % 8 === 0) {
+      const count = 6 + boss.phase * 2;
+      for (let a = 0; a < count; a++) {
+        const ang = (a / count) * Math.PI * 2 + (boss.stateTimer * 0.15);
+        const spd = 2.8 + boss.phase * 0.6;
+        projectiles.push({ x: bx, y: by, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 140, flying: true });
+      }
+    }
+    if (boss.stateTimer <= 0) {
+      boss.state = 'idle';
+      boss.stateTimer = 70 + Math.floor(Math.random() * 50);
+    }
+
+  } else if (boss.state === 'charge') {
+    // Phase 2+: charge across arena
+    if (boss.stateTimer > 0 && boss.stateTimer <= 20) {
+      // Wind-up — face player
+      boss.dir = px < bx ? -1 : 1;
+      boss.chargeSpeed = 0;
+    } else {
+      boss.chargeSpeed = -boss.dir * (12 + boss.phase * 2);
+      boss.x += boss.chargeSpeed;
+      // Bounce off arena walls
+      if (boss.x < BOSS_ARENA_X) { boss.x = BOSS_ARENA_X; boss.dir *= -1; boss.stateTimer = Math.min(boss.stateTimer, 8); }
+      if (boss.x + boss.w > BOSS_ARENA_R) { boss.x = BOSS_ARENA_R - boss.w; boss.dir *= -1; boss.stateTimer = Math.min(boss.stateTimer, 8); }
+      // Spray projectiles during charge
+      if (Math.random() < 0.3) {
+        const spd = 3 + boss.phase;
+        projectiles.push({ x: bx, y: by + 10, vx: (Math.random() - 0.5) * 4, vy: spd, life: 100, flying: true });
+      }
+    }
+    if (boss.stateTimer <= 0) {
+      boss.vx = 0;
+      boss.state = 'idle';
+      boss.stateTimer = 50 + Math.floor(Math.random() * 40);
+    }
+
+  } else if (boss.state === 'slam') {
+    // Phase 3: dive-bomb straight down at player, then back up
+    if (boss.stateTimer > 15) {
+      boss.vy = 0;
+    } else if (boss.stateTimer > 0) {
+      boss.vy = 14;
+    } else {
+      boss.vy = -10;
+      boss.y += boss.vy;
+      if (boss.y <= 2 * TILE) {
+        boss.vy = 0;
+        boss.state = 'idle';
+        boss.stateTimer = 50;
+        // Shockwave ring on return
+        for (let a = 0; a < 12; a++) {
+          const ang = (a / 12) * Math.PI * 2;
+          projectiles.push({ x: bx, y: by, vx: Math.cos(ang) * 5, vy: Math.sin(ang) * 5, life: 120, flying: true });
+        }
+      }
+    }
+    boss.y += boss.vy;
+    boss.y = Math.max(TILE, Math.min(BOSS_GROUND - boss.h, boss.y));
+  }
+
+  // Clamp boss to arena
+  boss.x = Math.max(BOSS_ARENA_X, Math.min(BOSS_ARENA_R - boss.w, boss.x));
+  boss.y = Math.max(TILE * 0.5, Math.min(BOSS_GROUND - boss.h, boss.y));
+
+  // Boss body — player dash collision (damages boss directly when no orbs)
+  const allOrbsDead = boss.orbs.every(o => o.dead);
+  const bRect = { x: boss.x + 6, y: boss.y + 6, w: boss.w - 12, h: boss.h - 12 };
+  const pRect = { x: player.x, y: player.y, w: player.w, h: player.h };
+  if (rectsOverlap(bRect, pRect)) {
+    if (player.dashFrames > 0 && boss.hitFlash === 0) {
+      damageBoss(1);
+      player.vx = -Math.sign(player.vx) * 10;
+      player.vy = -7; player.dashFrames = 0; player.onGround = false;
+    } else if (player.homing && player.homingTarget === boss && allOrbsDead) {
+      damageBoss(1);
+      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.vy = Math.min(player.vy, -CFG.jump1 * 0.6);
+      player.vx = player.dir * CFG.moveSpeed * 1.5;
+      player.homingUsed = false; comboCount++; comboTimer = 120;
+    } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
+      hp--; updateHPBar(); player.invincible = 80;
+      player.vy = -9; player.vx = (player.x < bx ? -1 : 1) * 10;
+      if (hp <= 0) { killPlayer(); return; }
+    }
+  }
+
+  // Boss homing target — only when orbs are dead or phase 1 with no orbs
+  // (handled in nearestLiveGoomba extension below)
+}
+
+function drawBoss() {
+  if (!boss.active) return;
+  const bsx = boss.x - camera;
+  if (bsx < -200 || bsx > W + 200) return;
+
+  const t = performance.now() / 400;
+  const phase = boss.phase;
+  const alpha = boss.state === 'teleport' ? Math.max(0.05, boss.stateTimer / 30) : 1;
+  const shk = Math.sin(performance.now() * 0.8) * (boss.shakeX > 0 ? boss.shakeX : 0);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(bsx + boss.w / 2 + shk, boss.y + boss.h / 2);
+
+  // Phase-based tint
+  const bodyColor  = phase === 1 ? '#1a0828' : phase === 2 ? '#280810' : '#080018';
+  const accentColor= phase === 1 ? '#6600cc' : phase === 2 ? '#cc0044' : '#0044cc';
+  const glowColor  = phase === 1 ? '#aa44ff' : phase === 2 ? '#ff2255' : '#44aaff';
+
+  // Outer aura
+  const grad = ctx.createRadialGradient(0, 0, boss.w * 0.3, 0, 0, boss.w * 0.9);
+  grad.addColorStop(0, accentColor + '44');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.ellipse(0, 0, boss.w * 0.9, boss.h * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Main body
+  ctx.fillStyle = boss.hitFlash > 0 && Math.floor(boss.hitFlash / 3) % 2 === 0 ? '#ffffff' : bodyColor;
+  ctx.beginPath(); ctx.ellipse(0, 0, boss.w / 2, boss.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Carapace plates
+  ctx.fillStyle = accentColor;
+  ctx.globalAlpha = alpha * 0.7;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + t * 0.2;
+    const px2 = Math.cos(a) * boss.w * 0.38, py2 = Math.sin(a) * boss.h * 0.38;
+    ctx.beginPath(); ctx.ellipse(px2, py2, 10, 6, a, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = alpha;
+
+  // Eyes — large, glowing
+  const eyeGlow = 0.6 + 0.4 * Math.sin(boss.eyePulse * 3);
+  ctx.fillStyle = glowColor;
+  ctx.globalAlpha = alpha * eyeGlow;
+  ctx.beginPath(); ctx.ellipse(-14, -8, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(14, -8, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = alpha;
+  ctx.beginPath(); ctx.ellipse(-14, -8, 5, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(14, -8, 5, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#000000';
+  ctx.beginPath(); ctx.ellipse(-14 + boss.dir * 2, -8, 2.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(14 + boss.dir * 2, -8, 2.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Mouth — jagged when attacking
+  ctx.strokeStyle = glowColor; ctx.lineWidth = 2; ctx.globalAlpha = alpha * 0.9;
+  ctx.beginPath();
+  if (boss.state === 'charge' || boss.state === 'slam') {
+    // Open maw
+    ctx.moveTo(-18, 12);
+    for (let i = 0; i < 6; i++) ctx.lineTo(-18 + i * 6 + (i % 2 === 0 ? 0 : 3), 12 + (i % 2 === 0 ? 8 : 0));
+    ctx.lineTo(18, 12);
+  } else {
+    ctx.arc(0, 10, 14, 0.2, Math.PI - 0.2);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = alpha;
+
+  // HP bar above boss
+  const barW = boss.w * 1.8, barH = 7;
+  const barX = -barW / 2, barY = -boss.h / 2 - 20;
+  ctx.fillStyle = '#220000'; ctx.fillRect(barX, barY, barW, barH);
+  const hpRatio = boss.hp / boss.maxHp;
+  const hpColor = hpRatio > 0.6 ? '#aa44ff' : hpRatio > 0.3 ? '#ff2255' : '#44aaff';
+  ctx.fillStyle = hpColor; ctx.fillRect(barX, barY, barW * hpRatio, barH);
+  ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 1; ctx.strokeRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('LEVIATHAN', 0, barY - 3);
+
+  ctx.restore();
+
+  // Draw orbiting orbs (outside the translated context)
+  for (const o of boss.orbs) {
+    if (o.dead) continue;
+    const osx = o.x - camera;
+    const pulse = 0.7 + 0.3 * Math.sin(o.angle * 3 + t);
+    ctx.save();
+    ctx.globalAlpha = 0.5 * pulse;
+    ctx.fillStyle = glowColor;
+    ctx.beginPath(); ctx.arc(osx + o.w / 2, o.y + o.h / 2, o.w * 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    if (o.hitFlash > 0 && Math.floor(o.hitFlash / 3) % 2 === 0) {
+      ctx.fillStyle = '#ffffff';
+    } else {
+      ctx.fillStyle = accentColor;
+    }
+    ctx.beginPath(); ctx.arc(osx + o.w / 2, o.y + o.h / 2, o.w / 2, 0, Math.PI * 2); ctx.fill();
+    if (player.homingTarget === o || o.lockFlash > 0) drawLockOn(o);
+    ctx.restore();
+  }
+
+  // Draw lock-on on boss itself if targeted
+  if (player.homingTarget === boss || boss.lockFlash > 0) drawLockOn(boss);
+}
+
+// ── Abyssal Wraith ────────────────────────────────────────────────────────────
+const WRAITH_MAX_HP   = 24;
+const WRAITH_ARENA_X  = 10 * TILE;
+const WRAITH_ARENA_R  = 135 * TILE;
+const WRAITH_GROUND   = (groundY - 1) * TILE;
+
+// Dash-wall: a vertical barrier with one safe gap the player must dash through
+// dashWalls: [{x, gapY, gapH, life, speed}]
+// Gravity zones: [{x,y,w,h,life}] — inside these, gravity flips
+// Clones: lightweight enemy objects that mimic player movement
+// Shockwave rings on ground: [{x, r, maxR, life}]
+
+const wraith = {
+  active: false,
+  x: 70 * TILE, y: 3 * TILE,
+  w: 80, h: 80,
+  hp: WRAITH_MAX_HP, maxHp: WRAITH_MAX_HP,
+  phase: 1,
+  state: 'idle', stateTimer: 120,
+  vx: 0, vy: 0, dir: -1,
+  hitFlash: 0, lockFlash: 0,
+  dead: false, deadTimer: 0,
+  flying: true,
+  eyePulse: 0, shakeX: 0,
+  // phase-specific state
+  dashWalls: [],      // [{x, gapY, gapH, speed, life, warned}]
+  gravZones: [],      // [{x,y,w,h,life, maxLife}]
+  clones: [],         // [{x,y,vx,vy,hp,hitFlash,dead,deadTimer,flying,lockFlash,w,h}]
+  shockwaves: [],     // [{cx,r,maxR,life,maxLife}]
+  tentacles: [],      // [{angle, length, targetLen, speed}] — phase 3 sweeping arms
+  telegraphTimer: 0,  // countdown before attack executes
+  telegraphType: '',  // what's coming
+  invulTimer: 0,      // brief invul after phase transition
+};
+
+function damageWraith(dmg) {
+  if (wraith.dead || wraith.hitFlash > 0 || wraith.invulTimer > 0) return false;
+  wraith.hp -= dmg;
+  wraith.hitFlash = 22;
+  wraith.shakeX = 10;
+  score += 600; updateHUD();
+  if (wraith.hp <= 0) {
+    wraith.hp = 0;
+    wraith.dead = true; wraith.deadTimer = 200;
+    wraith.state = 'dead';
+    spawnExplosion(wraith.x + wraith.w / 2, wraith.y + wraith.h / 2, true);
+    comboCount += 8; comboTimer = 200;
+    score += 8000; updateHUD();
+    return true;
+  }
+  // Phase transition invul
+  const newPhase = wraith.hp > wraith.maxHp * 0.6 ? 1 : wraith.hp > wraith.maxHp * 0.3 ? 2 : 3;
+  if (newPhase !== wraith.phase) { wraith.invulTimer = 90; wraith.phase = newPhase; wraith.clones = []; wraith.shockwaves = []; }
+  spawnExplosion(wraith.x + wraith.w / 2, wraith.y + wraith.h / 2, true);
+  return false;
+}
+
+function wraithSpawnClone() {
+  // Assign sequential order numbers; must be killed in order 1→2→3
+  const orderNum = wraith.clones.filter(c => !c.dead).length + 1;
+  // Spawn near player to get in the way
+  const spawnX = player.x + (Math.random() - 0.5) * 160;
+  wraith.clones.push({
+    x: Math.max(WRAITH_ARENA_X, Math.min(WRAITH_ARENA_R - 44, spawnX)),
+    y: player.y,
+    vx: -player.vx * 0.85,
+    vy: 0,
+    w: 44, h: 44,
+    hp: 1, maxHp: 1,
+    hitFlash: 0, lockFlash: 0,
+    dead: false, deadTimer: 0,
+    flying: false,
+    onGround: false,
+    angle: 0,
+    orderNum,         // 1, 2, or 3 — must kill in this order
+  });
+}
+
+function updateWraith() {
+  if (!wraith.active) return;
+  if (wraith.dead) {
+    wraith.deadTimer--;
+    if (wraith.deadTimer <= 0) { won = true; player.wonSlide = true; score += 1000; updateHUD(); }
+    return;
+  }
+
+  wraith.eyePulse += 0.07;
+  if (wraith.hitFlash > 0) wraith.hitFlash--;
+  if (wraith.shakeX > 0) wraith.shakeX = Math.max(0, wraith.shakeX - 1.5);
+  if (wraith.invulTimer > 0) wraith.invulTimer--;
+
+  const px = player.x + player.w / 2, py = player.y + player.h / 2;
+  const wx = wraith.x + wraith.w / 2, wy = wraith.y + wraith.h / 2;
+
+  // ── Clones ──────────────────────────────────────────────────────────────────
+  for (let i = wraith.clones.length - 1; i >= 0; i--) {
+    const cl = wraith.clones[i];
+    if (cl.dead) { cl.deadTimer--; if (cl.deadTimer <= 0) wraith.clones.splice(i, 1); continue; }
+    if (cl.hitFlash > 0) cl.hitFlash--;
+    if (cl.lockFlash > 0) cl.lockFlash--;
+
+    // Mirror player movement (inverted X)
+    cl.vx = -player.vx;
+    cl.vy += 0.32;
+    if (cl.vy > 20) cl.vy = 20;
+    cl.x += cl.vx;
+    cl.y += cl.vy;
+    cl.angle += 12;
+
+    // Ground collision for clone
+    const clGround = WRAITH_GROUND;
+    if (cl.y + cl.h >= clGround) { cl.y = clGround - cl.h; cl.vy = 0; cl.onGround = true; }
+    cl.x = Math.max(WRAITH_ARENA_X, Math.min(WRAITH_ARENA_R - cl.w, cl.x));
+
+    // Only killable if no lower-order clone is still alive
+    const clKillable = !wraith.clones.some(other => !other.dead && other.orderNum < cl.orderNum);
+
+    // Homing into clone
+    if (player.homingTarget === cl) {
+      const tx = cl.x + cl.w / 2, ty = cl.y + cl.h / 2;
+      const dx = tx - (player.x + player.w / 2), dy = ty - (player.y + player.h / 2);
+      const dist = Math.hypot(dx, dy);
+      if (dist < 14) {
+        if (clKillable) {
+          cl.dead = true; cl.deadTimer = 30;
+          player.homing = false; player.homingTarget = null; player.ballForm = true;
+          player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
+          player.vx = player.dir * CFG.moveSpeed * 1.5;
+          player.homingUsed = false; comboCount++; comboTimer = 120;
+          damageWraith(1);
+        } else {
+          // bounce off — clone is locked
+          player.homing = false; player.homingTarget = null;
+          player.vy = -8; player.vx = -player.vx;
+          if (player.invincible === 0) { hp--; updateHPBar(); player.invincible = 60; if (hp <= 0) { killPlayer(); return; } }
+        }
+      } else {
+        player.vx = (dx / dist) * HOMING_SPEED;
+        player.vy = (dy / dist) * HOMING_SPEED;
+        if (player.vx > 0) player.dir = 1; else player.dir = -1;
+        spawnTrail(player.x + player.w / 2, player.y + player.h / 2);
+      }
+    }
+
+    // Stomp / dash kill
+    const clRect = { x: cl.x + 3, y: cl.y + 3, w: cl.w - 6, h: cl.h - 6 };
+    const pRect  = { x: player.x, y: player.y, w: player.w, h: player.h };
+    if (!cl.dead && rectsOverlap(clRect, pRect)) {
+      if (player.dashFrames > 0 && cl.hitFlash === 0 && clKillable) {
+        cl.dead = true; cl.deadTimer = 30;
+        player.vx = -Math.sign(player.vx) * 9; player.vy = -6;
+        player.dashFrames = 0; comboCount++; comboTimer = 120;
+        damageWraith(1);
+      } else if (!player.homing && player.vy > 0 && player.y + player.h < cl.y + cl.h * 0.5 + 10 && clKillable) {
+        cl.dead = true; cl.deadTimer = 30;
+        player.vy = Math.min(player.vy, -7); comboCount++; comboTimer = 120;
+        damageWraith(1);
+      } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
+        hp--; updateHPBar(); player.invincible = 80;
+        player.vy = -9; player.vx = (player.x < cl.x + cl.w / 2 ? -1 : 1) * 10;
+        if (hp <= 0) { killPlayer(); return; }
+      }
+    }
+
+  }
+
+  // ── Shockwaves ──────────────────────────────────────────────────────────────
+  for (let i = wraith.shockwaves.length - 1; i >= 0; i--) {
+    const sw = wraith.shockwaves[i];
+    sw.r += 6 + wraith.phase;
+    sw.life--;
+    if (sw.life <= 0 || sw.r > sw.maxR) { wraith.shockwaves.splice(i, 1); continue; }
+    // Damage player if touching ring (thin band)
+    const pdx = px - sw.cx, pdy = py - (WRAITH_GROUND - 4);
+    const dist = Math.hypot(pdx, pdy);
+    if (Math.abs(dist - sw.r) < 14 && player.onGround && player.invincible === 0) {
+      hp--; updateHPBar(); player.invincible = 60;
+      player.vy = -10;
+      if (hp <= 0) { killPlayer(); return; }
+    }
+  }
+
+  // ── Tentacles (phase 3 visual + hitbox) ─────────────────────────────────────
+  if (wraith.phase === 3 && wraith.tentacles.length === 0) {
+    for (let i = 0; i < 6; i++) {
+      wraith.tentacles.push({ angle: (i / 6) * Math.PI * 2, length: 40, targetLen: 80 + i * 15, speed: 0.025 + i * 0.004 });
+    }
+  }
+  for (const tent of wraith.tentacles) {
+    tent.angle += tent.speed;
+    tent.length += (tent.targetLen - tent.length) * 0.05;
+    // Tentacle tip
+    const tipX = wraith.x + wraith.w / 2 + Math.cos(tent.angle) * tent.length;
+    const tipY = wraith.y + wraith.h / 2 + Math.sin(tent.angle) * tent.length;
+    if (rectsOverlap({ x: tipX - 10, y: tipY - 10, w: 20, h: 20 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      if (player.dashFrames > 0) {
+        // Dash through — cut the tentacle briefly
+        tent.targetLen = 20; setTimeout(() => { tent.targetLen = 80 + Math.random() * 40; }, 800);
+        damageWraith(1);
+        player.vx = -Math.sign(player.vx) * 8; player.vy = -5; player.dashFrames = 0;
+      } else if (!player.homing && !player.ballForm && player.invincible === 0) {
+        hp--; updateHPBar(); player.invincible = 70;
+        player.vy = -8; player.vx = (player.x < tipX ? -1 : 1) * 9;
+        if (hp <= 0) { killPlayer(); return; }
+      }
+    }
+  }
+
+  // ── State machine ───────────────────────────────────────────────────────────
+  wraith.stateTimer--;
+
+  // Float toward player menacingly
+  const targetX = Math.max(WRAITH_ARENA_X, Math.min(WRAITH_ARENA_R - wraith.w, px - wraith.w / 2 + (Math.sin(wraith.eyePulse * 0.4) * 60)));
+  const targetY = Math.max(TILE, Math.min(WRAITH_GROUND - wraith.h * 1.5, py - wraith.h * 1.2));
+  wraith.x += (targetX - wraith.x) * 0.018;
+  wraith.y += (targetY - wraith.y) * 0.018;
+  wraith.dir = px < wx ? -1 : 1;
+
+  if (wraith.state === 'idle') {
+    if (wraith.stateTimer <= 0) {
+      const r = Math.random();
+      if (wraith.phase === 1) {
+        if      (r < 0.5)  { wraith.state = 'clonewave'; wraith.stateTimer = 30; }
+        else               { wraith.state = 'ring';      wraith.stateTimer = 40; }
+      } else if (wraith.phase === 2) {
+        if      (r < 0.4)  { wraith.state = 'clonewave'; wraith.stateTimer = 25; }
+        else if (r < 0.7)  { wraith.state = 'stomp';     wraith.stateTimer = 40; }
+        else               { wraith.state = 'ring';      wraith.stateTimer = 40; }
+      } else {
+        if      (r < 0.35) { wraith.state = 'clonewave'; wraith.stateTimer = 20; }
+        else if (r < 0.65) { wraith.state = 'stomp';     wraith.stateTimer = 32; }
+        else               { wraith.state = 'ring';      wraith.stateTimer = 32; }
+      }
+    }
+
+  } else if (wraith.state === 'clonewave') {
+    if (wraith.stateTimer === 29) wraithSpawnClone();
+    if (wraith.phase >= 2 && wraith.stateTimer === 15) wraithSpawnClone();
+    if (wraith.phase >= 3 && wraith.stateTimer === 1) wraithSpawnClone();
+    if (wraith.stateTimer <= 0) { wraith.state = 'idle'; wraith.stateTimer = 80 + Math.floor(Math.random() * 40); }
+
+  } else if (wraith.state === 'stomp') {
+    // Slam down, create ground shockwave
+    if (wraith.stateTimer === 39) {
+      wraith.vy = 16;
+    }
+    if (wraith.stateTimer > 0) {
+      wraith.y += wraith.vy;
+      wraith.vy *= 0.92;
+    }
+    if (wraith.stateTimer === 1) {
+      // Emit shockwaves in both directions from directly below
+      const cx = wraith.x + wraith.w / 2;
+      wraith.shockwaves.push({ cx, r: 10, maxR: 350, life: 55, maxLife: 55 });
+      if (wraith.phase >= 2) wraith.shockwaves.push({ cx: cx - 60, r: 5, maxR: 280, life: 50, maxLife: 50 });
+      if (wraith.phase >= 3) wraith.shockwaves.push({ cx: cx + 60, r: 5, maxR: 280, life: 50, maxLife: 50 });
+      wraith.vy = -12;
+    }
+    if (wraith.stateTimer <= 0) {
+      wraith.vy = 0;
+      wraith.state = 'idle';
+      wraith.stateTimer = 50 + Math.floor(Math.random() * 30);
+    }
+
+  } else if (wraith.state === 'ring') {
+    // One ring burst, once, at the start
+    if (wraith.stateTimer === 39) {
+      const count = 8 + wraith.phase * 2;
+      for (let a = 0; a < count; a++) {
+        const ang = (a / count) * Math.PI * 2;
+        const spd = 2.5 + wraith.phase * 0.5;
+        projectiles.push({ x: wx, y: wy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 150, flying: true });
+      }
+    }
+    if (wraith.stateTimer <= 0) { wraith.state = 'idle'; wraith.stateTimer = 80 + Math.floor(Math.random() * 50); }
+  }
+
+  wraith.x = Math.max(WRAITH_ARENA_X, Math.min(WRAITH_ARENA_R - wraith.w, wraith.x));
+  wraith.y = Math.max(TILE, Math.min(WRAITH_GROUND - wraith.h, wraith.y));
+
+  // ── Direct hit detection ─────────────────────────────────────────────────────
+  // Wraith is only directly damageable when all clones are dead
+  const allClonesDead = wraith.clones.every(c => c.dead);
+  const wRect = { x: wraith.x + 8, y: wraith.y + 8, w: wraith.w - 16, h: wraith.h - 16 };
+  const pRect2 = { x: player.x, y: player.y, w: player.w, h: player.h };
+  if (rectsOverlap(wRect, pRect2)) {
+    if (player.dashFrames > 0 && wraith.hitFlash === 0 && allClonesDead) {
+      damageWraith(1);
+      player.vx = -Math.sign(player.vx) * 10; player.vy = -7;
+      player.dashFrames = 0; player.onGround = false;
+    } else if (player.homing && player.homingTarget === wraith && allClonesDead) {
+      damageWraith(1);
+      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
+      player.vx = player.dir * CFG.moveSpeed * 1.5;
+      player.homingUsed = false; comboCount++; comboTimer = 120;
+    } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
+      hp--; updateHPBar(); player.invincible = 80;
+      player.vy = -9; player.vx = (player.x < wx ? -1 : 1) * 11;
+      if (hp <= 0) { killPlayer(); return; }
+    }
+  }
+}
+
+function drawWraith() {
+  if (!wraith.active) return;
+  const wsx = wraith.x - camera;
+  if (wsx < -200 || wsx > W + 200) return;
+
+  const t = performance.now() / 400;
+  const phase = wraith.phase;
+  const shk = Math.sin(performance.now() * 0.9) * (wraith.shakeX > 0 ? wraith.shakeX : 0);
+
+  const bodyColor   = phase === 1 ? '#080818' : phase === 2 ? '#180808' : '#000000';
+  const accentColor = phase === 1 ? '#3300aa' : phase === 2 ? '#aa0000' : '#ff6600';
+  const glowColor   = phase === 1 ? '#6644ff' : phase === 2 ? '#ff3300' : '#ffaa00';
+
+  // ── Draw shockwaves ──────────────────────────────────────────────────────────
+  for (const sw of wraith.shockwaves) {
+    const fade = sw.life / sw.maxLife;
+    ctx.save();
+    ctx.globalAlpha = fade * 0.8;
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 5 * fade + 1;
+    ctx.beginPath();
+    ctx.arc(sw.cx - camera, WRAITH_GROUND - 4, sw.r, Math.PI, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── Draw clones ──────────────────────────────────────────────────────────────
+  for (const cl of wraith.clones) {
+    if (cl.dead) continue;
+    const clsx = cl.x - camera;
+    ctx.save();
+    ctx.translate(clsx + cl.w / 2, cl.y + cl.h / 2);
+    ctx.rotate(cl.angle * Math.PI / 180);
+    const flash = cl.hitFlash > 0 && Math.floor(cl.hitFlash / 3) % 2 === 0;
+    ctx.fillStyle = flash ? '#ffffff' : '#220011';
+    ctx.beginPath(); ctx.ellipse(0, 0, cl.w / 2, cl.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = accentColor; ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.ellipse(0, 0, cl.w / 2 - 6, cl.h / 2 - 6, 0, 0, Math.PI * 2); ctx.fill();
+    // Glowing eyes
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(wraith.eyePulse * 4);
+    ctx.fillStyle = glowColor;
+    ctx.beginPath(); ctx.arc(-8, -5, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(8, -5, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    if (player.homingTarget === cl || cl.lockFlash > 0) drawLockOn(cl);
+
+    // Order number — dim if not yet killable, bright if it's this clone's turn
+    const killable = !wraith.clones.some(other => !other.dead && other.orderNum < cl.orderNum);
+    ctx.save();
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (killable) {
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = glowColor; ctx.shadowBlur = 12;
+    } else {
+      ctx.fillStyle = '#666688';
+      ctx.shadowBlur = 0;
+    }
+    ctx.fillText(String(cl.orderNum), clsx + cl.w / 2, cl.y + cl.h / 2);
+    ctx.restore();
+  }
+
+  // ── Draw wraith body ─────────────────────────────────────────────────────────
+  ctx.save();
+  ctx.translate(wsx + wraith.w / 2 + shk, wraith.y + wraith.h / 2);
+
+  // Outer smear aura
+  const aGrad = ctx.createRadialGradient(0, 0, wraith.w * 0.2, 0, 0, wraith.w * 1.2);
+  aGrad.addColorStop(0, glowColor + '55');
+  aGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aGrad;
+  ctx.beginPath(); ctx.ellipse(0, 0, wraith.w, wraith.h * 1.1, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Tentacles (phase 3)
+  if (phase === 3) {
+    for (const tent of wraith.tentacles) {
+      ctx.save();
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 5;
+      ctx.globalAlpha = 0.85;
+      const segments = 6;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      for (let s = 1; s <= segments; s++) {
+        const frac = s / segments;
+        const wobble = Math.sin(tent.angle * 2 + s) * 10 * frac;
+        ctx.lineTo(
+          Math.cos(tent.angle) * tent.length * frac + wobble * Math.sin(tent.angle),
+          Math.sin(tent.angle) * tent.length * frac + wobble * Math.cos(tent.angle)
+        );
+      }
+      ctx.stroke();
+      // Tip glow
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = glowColor;
+      ctx.beginPath();
+      ctx.arc(Math.cos(tent.angle) * tent.length, Math.sin(tent.angle) * tent.length, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Body
+  const hitFlashing = wraith.hitFlash > 0 && Math.floor(wraith.hitFlash / 3) % 2 === 0;
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = hitFlashing ? '#ffffff' : bodyColor;
+  ctx.beginPath(); ctx.ellipse(0, 0, wraith.w / 2, wraith.h / 2, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Phase fractures — cracks that grow with damage
+  const crackCount = wraith.phase * 3;
+  ctx.strokeStyle = glowColor; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.6;
+  for (let i = 0; i < crackCount; i++) {
+    const a = (i / crackCount) * Math.PI * 2 + t * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * 8, Math.sin(a) * 8);
+    ctx.lineTo(Math.cos(a) * (wraith.w * 0.45), Math.sin(a) * (wraith.h * 0.44));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Eyes — four eyes, no face, just horror
+  const epGlow = 0.5 + 0.5 * Math.abs(Math.sin(wraith.eyePulse * 2.5));
+  ctx.globalAlpha = epGlow;
+  ctx.fillStyle = glowColor;
+  for (const [ex, ey, er] of [[-16,-12,8],[16,-12,8],[-6,8,5],[6,8,5]]) {
+    ctx.beginPath(); ctx.ellipse(ex, ey, er, er * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = '#000'; ctx.globalAlpha = 1;
+  for (const [ex, ey, er] of [[-16,-12,4],[16,-12,4],[-6,8,2.5],[6,8,2.5]]) {
+    ctx.beginPath(); ctx.ellipse(ex + wraith.dir * 2, ey, er, er, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // HP bar
+  const barW = wraith.w * 2, barH = 8;
+  const barX = -barW / 2, barY = -wraith.h / 2 - 22;
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#110000'; ctx.fillRect(barX, barY, barW, barH);
+  const hpR = wraith.hp / wraith.maxHp;
+  ctx.fillStyle = phase === 1 ? '#6644ff' : phase === 2 ? '#ff3300' : '#ffaa00';
+  ctx.fillRect(barX, barY, barW * hpR, barH);
+  ctx.strokeStyle = '#ffffff33'; ctx.lineWidth = 1; ctx.strokeRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('ABYSSAL WRAITH', 0, barY - 3);
+
+  ctx.restore();
+
+  if (player.homingTarget === wraith || wraith.lockFlash > 0) drawLockOn(wraith);
+}
+
 function nearestLiveGoomba() {
   const px = player.x + player.w / 2, py = player.y + player.h / 2;
   let best = null, bestDist = Infinity;
-  for (const g of [...goombas, ...flyers]) {
+  // Include boss orbs and boss itself as homing targets
+  const candidates = [...goombas, ...flyers];
+  if (boss.active && !boss.dead) {
+    const allOrbsDead = boss.orbs.every(o => o.dead);
+    if (boss.orbs.length > 0) {
+      for (const o of boss.orbs) { if (!o.dead) candidates.push(o); }
+    }
+    if (allOrbsDead) candidates.push(boss);
+  }
+  if (wraith.active && !wraith.dead) {
+    const liveClones = wraith.clones.filter(c => !c.dead);
+    if (liveClones.length > 0) {
+      // Only allow homing to the lowest-order live clone
+      const minOrder = Math.min(...liveClones.map(c => c.orderNum));
+      for (const c of liveClones) { if (c.orderNum === minOrder) candidates.push(c); }
+    } else {
+      candidates.push(wraith);
+    }
+  }
+  for (const g of candidates) {
     if (g.dead) continue;
     const gx = g.x + g.w / 2, gy = g.y + g.h / 2;
     const dist = Math.hypot(px - gx, py - gy);
@@ -952,11 +1894,17 @@ function update(dt) {
   }
 
 
-  // Flag
-  if (player.x + player.w > FLAG_X * TILE && !won) {
-    won = true; player.wonSlide = true;
-    player.x = FLAG_X * TILE - player.w + 6; player.vx = 0;
-    score += 1000; updateHUD();
+  // Boss update
+  updateBoss();
+  updateWraith();
+
+  // Flag (skip on boss level — win is triggered by boss death)
+  if (!LEVELS[currentLevel].isBossLevel) {
+    if (player.x + player.w > FLAG_X * TILE && !won) {
+      won = true; player.wonSlide = true;
+      player.x = FLAG_X * TILE - player.w + 6; player.vx = 0;
+      score += 1000; updateHUD();
+    }
   }
 
   // Camera X — keep player horizontally centered at all zoom levels
@@ -1676,6 +2624,8 @@ function loop(ts) {
   drawPlatforms();
   drawCoins();
   drawGoombas();
+  drawBoss();
+  drawWraith();
   drawParticlesAll();
   if (!dead) drawPlayer();
   else drawDeathAnimation();
@@ -1699,12 +2649,37 @@ function loop(ts) {
 
   // Screen-space overlays
   if (won) {
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0,0,W,H);
-    ctx.fillStyle = '#d4a855'; ctx.font = 'bold 52px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('★ YOU WIN! ★', W/2, H/2 - 10);
+    const isBoss = LEVELS[currentLevel].isBossLevel;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H);
+    if (isBoss) {
+      const bt = performance.now() / 600;
+      const bossName = LEVELS[currentLevel].bossType === 'wraith' ? 'ABYSSAL WRAITH' : 'LEVIATHAN';
+      ctx.fillStyle = `hsl(${260 + Math.sin(bt)*40},80%,65%)`; ctx.font = 'bold 40px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`✦ ${bossName} DEFEATED ✦`, W/2, H/2 - 20);
+      ctx.fillStyle = '#aaddff'; ctx.font = '20px monospace';
+      ctx.fillText('The darkness recedes.', W/2, H/2 + 18);
+    } else {
+      ctx.fillStyle = '#d4a855'; ctx.font = 'bold 52px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('★ YOU WIN! ★', W/2, H/2 - 10);
+    }
     ctx.fillStyle = '#fff'; ctx.font = '24px monospace';
-    ctx.fillText('Score: ' + String(score).padStart(6,'0'), W/2, H/2 + 30);
-    ctx.fillText(`LVL ${currentLevel + 1}/11 — Press R or LVL to continue`, W/2, H/2 + 60);
+    ctx.fillText('Score: ' + String(score).padStart(6,'0'), W/2, H/2 + 50);
+    ctx.fillText(`LVL ${currentLevel + 1} — Press R or LVL to continue`, W/2, H/2 + 80);
+  }
+
+  // Boss level intro hint
+  if (LEVELS[currentLevel].isBossLevel && !won && !dead && (boss.active || wraith.active)) {
+    const t2 = performance.now() / 1000;
+    if (t2 % 6 < 3) {
+      ctx.save();
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t2 * 4);
+      ctx.fillStyle = '#ff4488'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+      const hint = wraith.active
+        ? 'DASH walls have a gap  ·  Kill CLONES to expose the Wraith  ·  JUMP shockwaves  ·  DASH tentacles'
+        : 'DASH through attacks  ·  HOMING attacks hit weak points  ·  CHAIN orbs to expose the boss';
+      ctx.fillText(hint, W/2, H - 18);
+      ctx.restore();
+    }
   }
 
   updateHUD();
@@ -1718,8 +2693,8 @@ updateHPBar();
 requestAnimationFrame(loop);
 
 // ── Level button ─────────────────────────────────────────────────────────────
-document.getElementById('level-btn').addEventListener('click', () => {
-  loadLevel(currentLevel + 1);
+document.getElementById('level-btn').addEventListener('change', (e) => {
+  loadLevel(parseInt(e.target.value));
   player.hp = player.maxHp;
   updateHPBar();
 });
