@@ -2401,11 +2401,13 @@ function update(dt) {
     }
   }
 
-  // Break blocks touched during homing or dashing — must run BEFORE Y collision
+  // Break blocks on homing/dash impact — only blocks the player center is inside
   if (player.homing || player.dashFrames > 0) {
-    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    const cx = player.x + player.w / 2, cy = player.y + player.h / 2;
     for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
-      if (s.key && !blockHit[s.key] && rectsOverlap(pr, s)) hitBlock(s);
+      if (s.key && !blockHit[s.key] && cx > s.x && cx < s.x + s.w && cy > s.y && cy < s.y + s.h) {
+        hitBlock(s);
+      }
     }
   }
 
