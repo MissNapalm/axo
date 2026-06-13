@@ -678,9 +678,12 @@ function loadLevel(n) {
     const h = 2; // goombas always 2 hits
     return { id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
   });
+  const halfwayX = (FLAG_X / 2) * TILE; // halfway to the flag
   flyers = lv.flyers.map((f, i) => {
     const type = 'normal';
-    const h = 3;
+    const isRed = f.x * TILE >= halfwayX;
+    const h = isRed ? 3 : 2;
+    const sz = isRed ? Math.round(TILE * 1.35) : TILE;
     // Minimum y = 5*TILE so bats stay in mid-height range
     let safeY = Math.max(f.fy, 5 * TILE);
     // Push down if spawning inside any platform
@@ -696,7 +699,7 @@ function loadLevel(n) {
         }
       }
     }
-    return { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
+    return { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: sz, h: sz, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0, red: isRed };
   });
   heartPickups = [];
   projectiles  = [];
@@ -3408,28 +3411,28 @@ function drawEnemy(g) {
     ctx.restore();
   }
 
-  // Bats are always tough (3 HP) — draw them slightly darker
   const toughTint = g.flying && g.maxHp >= 3;
 
   if (g.flying) {
-    // Bat — black with red eyes
-    const wingSpan = 30 + Math.sin(t * 3 + g.wobble) * 10;
-    const flapOff = Math.abs(Math.sin(t * 3 + g.wobble)) * 14;
+    const isRedBat = g.red;
+    const scale = isRedBat ? 1.35 : 1;
+    const wingSpan = (30 + Math.sin(t * 3 + g.wobble) * 10) * scale;
+    const flapOff = Math.abs(Math.sin(t * 3 + g.wobble)) * 14 * scale;
     ctx.save();
     // Wings
-    ctx.fillStyle = '#111111';
+    ctx.fillStyle = isRedBat ? '#5a0000' : '#111111';
     ctx.beginPath();
     ctx.moveTo(cx, cy - 2);
     ctx.lineTo(cx - wingSpan, cy - 5 - flapOff);
-    ctx.lineTo(cx - wingSpan + 12, cy + 7);
+    ctx.lineTo(cx - wingSpan + 12 * scale, cy + 7);
     ctx.fill();
     ctx.beginPath();
     ctx.moveTo(cx, cy - 2);
     ctx.lineTo(cx + wingSpan, cy - 5 - flapOff);
-    ctx.lineTo(cx + wingSpan - 12, cy + 7);
+    ctx.lineTo(cx + wingSpan - 12 * scale, cy + 7);
     ctx.fill();
     // Wing membrane highlight
-    ctx.fillStyle = '#2a2a2a';
+    ctx.fillStyle = isRedBat ? '#8b1010' : '#2a2a2a';
     ctx.beginPath();
     ctx.moveTo(cx, cy - 1);
     ctx.lineTo(cx - wingSpan * 0.6, cy - 2 - flapOff * 0.5);
@@ -3441,18 +3444,18 @@ function drawEnemy(g) {
     ctx.lineTo(cx + wingSpan * 0.55, cy + 3);
     ctx.fill();
     // Body
-    ctx.fillStyle = '#0a0a0a';
-    ctx.beginPath(); ctx.ellipse(cx, cy, 12, 10, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#1c1c1c';
-    ctx.beginPath(); ctx.ellipse(cx, cy - 1, 8, 7, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = isRedBat ? '#3a0000' : '#0a0a0a';
+    ctx.beginPath(); ctx.ellipse(cx, cy, 12 * scale, 10 * scale, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = isRedBat ? '#660000' : '#1c1c1c';
+    ctx.beginPath(); ctx.ellipse(cx, cy - 1, 8 * scale, 7 * scale, 0, 0, Math.PI*2); ctx.fill();
     ctx.restore();
-    // Eyes
-    ctx.fillStyle = '#ff2244';
-    ctx.beginPath(); ctx.arc(cx - 4, cy - 2, 4, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 4, cy - 2, 4, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ffee00';
-    ctx.beginPath(); ctx.arc(cx - 4, cy - 2, 1.8, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + 4, cy - 2, 1.8, 0, Math.PI*2); ctx.fill();
+    // Eyes — red bats have orange-yellow eyes
+    ctx.fillStyle = isRedBat ? '#ff6600' : '#ff2244';
+    ctx.beginPath(); ctx.arc(cx - 4 * scale, cy - 2, 4 * scale, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 4 * scale, cy - 2, 4 * scale, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = isRedBat ? '#ffcc00' : '#ffee00';
+    ctx.beginPath(); ctx.arc(cx - 4 * scale, cy - 2, 1.8 * scale, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 4 * scale, cy - 2, 1.8 * scale, 0, Math.PI*2); ctx.fill();
   } else {
     // Ground blob — pink (tough enemies are darker red)
     const squish = wf ? 1.1 : 0.95;
