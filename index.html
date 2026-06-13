@@ -181,6 +181,7 @@
       <option value="forest">Forest</option>
       <option value="happy">Happy Hills</option>
       <option value="ice">Ice Cave</option>
+      <option value="woods">Woods</option>
     </select>
   </label>
   <button id="s-reset">Reset defaults</button>
@@ -302,6 +303,15 @@ const THEMES = {
     pipe:'#5888b8', pipeRail:'#88bbdd', pipeFlow:'#ffffff', pipeCap:'#88bbdd', pipeCapDk:'#5888b8', pipeCore:'#ddeeff',
     orb:'#88eeff', orbHi:'#ffffff',
     hpBlock:'#880022', hpBlockInner:'#cc0033', hpGlow:'#ff6688', hpText:'#ffaacc',
+  },
+  woods: {
+    skyTop:'#1a3a0a', skyBot:'#2d5c18',
+    ground:'#3a2208', groundSub:'#2a1804', groundEdge:'#88cc44', groundTrace:'#4a3010', groundNode:'#aaee55',
+    brick:'#4a3010', brickInner:'#5a3c18', brickEdge:'#88cc44', brickCross:'#3a2208',
+    qOuter:'#3a2800', qInner:'#5a4010', qGlow:'#aaee44', qBorder:'#88cc33', qHi:'#ddff99', qChar:'🍃',
+    pipe:'#1a4a08', pipeRail:'#33aa22', pipeFlow:'#aaffaa', pipeCap:'#228811', pipeCapDk:'#114400', pipeCore:'#66dd44',
+    orb:'#ffee44', orbHi:'#ffffaa',
+    hpBlock:'#0a2200', hpBlockInner:'#1a4400', hpGlow:'#55ff22', hpText:'#aaffaa',
   },
 };
 // alias for legacy references
@@ -3276,7 +3286,12 @@ function killPlayer() {
   }, 1200);
 }
 
-document.getElementById('go-restart').addEventListener('click', () => location.reload());
+document.getElementById('go-restart').addEventListener('click', () => {
+  document.getElementById('gameover').classList.remove('show');
+  loadLevel(currentLevel);
+  player.hp = player.maxHp;
+  updateHPBar();
+});
 document.addEventListener('keydown', e => {
   if ((e.code === 'KeyR' || e.code === 'Enter') && dead) { location.reload(); return; }
 });
@@ -3477,6 +3492,60 @@ function drawBg() {
       ctx.globalAlpha = 0.04+0.03*Math.sin(t*0.5+i*1.3);
       ctx.fillStyle = i%2===0?'#88ddff':'#aaddff';
       ctx.beginPath(); ctx.ellipse(W/2+ax, ay, W*0.7, 18+i*8, 0, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+  } else if (currentTheme === 'woods') {
+    // Sun rays through canopy
+    const sunX = W * 0.5 - camera * 0.004, sunY = -20 + cameraY * 0.01;
+    for (let r = 0; r < 6; r++) {
+      const ang = -Math.PI*0.5 + (r - 2.5) * 0.18;
+      const rayLen = 420 + r * 30;
+      ctx.save();
+      ctx.globalAlpha = 0.07 + 0.03 * Math.sin(t * 0.4 + r);
+      ctx.fillStyle = '#ddff88';
+      ctx.beginPath();
+      ctx.moveTo(sunX, sunY);
+      ctx.lineTo(sunX + Math.cos(ang - 0.05) * rayLen, sunY + Math.sin(ang - 0.05) * rayLen);
+      ctx.lineTo(sunX + Math.cos(ang + 0.05) * rayLen, sunY + Math.sin(ang + 0.05) * rayLen);
+      ctx.fill();
+      ctx.restore();
+    }
+    // Far trees (dark)
+    for (let i = 0; i < 20; i++) {
+      const tx2 = (i * 480 + 80) - camera * 0.08;
+      const ty2 = H * 0.78 + cameraY * 0.1;
+      const th2 = 90 + (i%4)*35, tw = 28 + (i%3)*12;
+      ctx.fillStyle = '#0e2a06'; ctx.globalAlpha = 0.7;
+      ctx.fillRect(tx2 - 3, ty2 - th2 * 0.5, 6, th2 * 0.5);
+      ctx.beginPath(); ctx.ellipse(tx2, ty2 - th2 * 0.55, tw, th2 * 0.6, 0, 0, Math.PI*2); ctx.fill();
+    }
+    // Mid trees
+    for (let i = 0; i < 26; i++) {
+      const tx2 = (i * 340 + 40) - camera * 0.18;
+      const ty2 = H * 0.84 + cameraY * 0.15;
+      const th2 = 70 + (i%5)*25, tw = 22 + (i%4)*10;
+      ctx.fillStyle = '#1a4a08'; ctx.globalAlpha = 0.8;
+      ctx.fillRect(tx2 - 4, ty2 - th2 * 0.45, 8, th2 * 0.45);
+      ctx.beginPath(); ctx.ellipse(tx2, ty2 - th2 * 0.5, tw, th2 * 0.55, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#2a6610'; ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.ellipse(tx2 - tw*0.25, ty2 - th2*0.65, tw*0.65, th2*0.38, 0, 0, Math.PI*2); ctx.fill();
+    }
+    // Close foliage fringe along top
+    for (let i = 0; i < 40; i++) {
+      const fx = (i * 180 + 20) - camera * 0.35;
+      const fy = 8 + (i%3)*14 + cameraY * 0.02;
+      const fw = 55 + (i%4)*22, fh = 38 + (i%3)*18;
+      ctx.fillStyle = i%2===0 ? '#1e5c0a' : '#143d06'; ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.ellipse(fx, fy, fw, fh, 0, 0, Math.PI*2); ctx.fill();
+    }
+    // Fireflies
+    for (let i = 0; i < 18; i++) {
+      const fx = ((i*530+70) - camera*0.22) % (W+100) - 30;
+      const fy = 80 + (i%5)*55 + Math.sin(t*1.1+i*1.7)*12 + cameraY*0.1;
+      ctx.globalAlpha = (0.4+0.5*Math.sin(t*2.3+i*2.1)) * 0.8;
+      ctx.fillStyle = '#ccff44';
+      ctx.beginPath(); ctx.arc(fx, fy, 2, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
