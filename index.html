@@ -1289,15 +1289,16 @@ function drawPlayer() {
   // Rotation after scale so direction flip doesn't invert the angle
   if (!player.homing && !player.ballForm) ctx.rotate(CFG.spriteRot * Math.PI / 180);
   if (player.spinning || player.homing || player.ballForm) ctx.rotate((player.spinAngle * Math.PI) / 180);
-  ctx.imageSmoothingEnabled = false;
-
   const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
 
   if ((player.homing || player.ballForm) && ballImg.complete && ballImg.naturalWidth > 0) {
-    // Ball form during and after homing until landing — draw as square
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(ballImg, -dh / 2, -dh + footOffset, dh, dh);
   } else if (walkSheet.complete && walkSheet.naturalWidth > 0) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     const dw = Math.round(dh * (WALK_FW / WALK_FH));
     let frameIdx;
     if (!player.onGround || player.spinning) {
@@ -1405,7 +1406,8 @@ function drawDeathAnimation() {
   if (walkSheet.complete && walkSheet.naturalWidth > 0) {
     const dh = player.h * 1.0;
     const dw = Math.round(dh * (WALK_FW / WALK_FH));
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(walkSheet, 0, 0, WALK_FW, WALK_FH, -dw/2, 0, dw, dh);
   }
   ctx.restore();
@@ -1419,7 +1421,6 @@ function loop(ts) {
 
   // Draw with zoom
   ctx.save();
-  ctx.imageSmoothingEnabled = false;
   // Deep space gradient sky
   const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
   skyGrad.addColorStop(0, '#04041a');
