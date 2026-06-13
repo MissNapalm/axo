@@ -812,11 +812,22 @@ function update(dt) {
       const dy = (player.y + player.h / 2) - (g.y + g.h / 2);
       const dist = Math.hypot(dx, dy);
       if (dist < 380) {
-        const spd = g.flying ? 4.5 : 3.5;
-        projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2, vx: (dx/dist)*spd, vy: (dy/dist)*spd, life: 120, flying: g.flying });
+        if (g.flying) {
+          // Three projectiles: aimed + two spread
+          const spd = 4.5;
+          const ang = Math.atan2(dy, dx);
+          for (const spread of [-0.25, 0, 0.25]) {
+            projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2,
+              vx: Math.cos(ang + spread) * spd, vy: Math.sin(ang + spread) * spd,
+              life: 130, flying: true });
+          }
+        } else {
+          const spd = 2.2;
+          projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2, vx: (dx/dist)*spd, vy: (dy/dist)*spd, life: 160, flying: false });
+        }
       }
       g.shootCooldown = g.flying
-        ? 45 + Math.floor(Math.random() * 30)
+        ? 90 + Math.floor(Math.random() * 60)
         : 120 + Math.floor(Math.random() * 80);
     }
 
