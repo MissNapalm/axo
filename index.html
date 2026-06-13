@@ -2351,14 +2351,15 @@ function update(dt) {
   // Ceiling — invisible wall at top of world
   if (player.y < 0) { player.y = 0; if (player.vy < 0) player.vy = 0; }
 
-  // Collide X
-  const nearX = getSolidsNear(player.x, player.y, player.w, player.h);
-  for (const s of nearX) {
-    if (rectsOverlap({ x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 }, s)) {
-      if (player.vx > 0) player.x = s.x - player.w;
-      else if (player.vx < 0) player.x = s.x + s.w;
-      player.vx = 0;
-      if (player.homing) { player.homing = false; player.homingTarget = null; player.spinning = false; }
+  // Collide X — skip wall collision while homing so player reaches target
+  if (!player.homing) {
+    const nearX = getSolidsNear(player.x, player.y, player.w, player.h);
+    for (const s of nearX) {
+      if (rectsOverlap({ x: player.x, y: player.y + 2, w: player.w, h: player.h - 4 }, s)) {
+        if (player.vx > 0) player.x = s.x - player.w;
+        else if (player.vx < 0) player.x = s.x + s.w;
+        player.vx = 0;
+      }
     }
   }
 
@@ -2367,32 +2368,33 @@ function update(dt) {
   player.onGround = false;
   player.y += player.vy;
 
-  const nearY = getSolidsNear(player.x, player.y, player.w, player.h);
-  for (const s of nearY) {
-    if (rectsOverlap({ x: player.x + 2, y: player.y, w: player.w - 4, h: player.h }, s)) {
-      if (player.vy > 0) {
-        player.y = s.y - player.h;
-        player.vy = 0;
-        if (!wasOnGround) {
-          player.lastLandTime = now;
-          spawnDust(player.x + player.w / 2, player.y + player.h);
-          playSound('land', 0.3);
-          player.spinning = false;
-          if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
-          player.ballForm = false;
-          player.dashingUp = false;
-          player.homing = false; player.homingTarget = null;
-          player.dashFrames = 0;
-          comboCount = 0; comboTimer = 0;
+  // Skip Y solid collision while homing — player flies through to reach target
+  if (!player.homing) {
+    const nearY = getSolidsNear(player.x, player.y, player.w, player.h);
+    for (const s of nearY) {
+      if (rectsOverlap({ x: player.x + 2, y: player.y, w: player.w - 4, h: player.h }, s)) {
+        if (player.vy > 0) {
+          player.y = s.y - player.h;
+          player.vy = 0;
+          if (!wasOnGround) {
+            player.lastLandTime = now;
+            spawnDust(player.x + player.w / 2, player.y + player.h);
+            playSound('land', 0.3);
+            player.spinning = false;
+            if (player.ballForm) player.ballExitFlash = BALL_EXIT_FLASH;
+            player.ballForm = false;
+            player.dashingUp = false;
+            player.dashFrames = 0;
+            comboCount = 0; comboTimer = 0;
+          }
+          player.onGround = true;
+          player.homingUsed = false; player.homingCount = 0;
+          player.dashUsedUp = false; player.dashUsedH = false;
+        } else if (player.vy < 0) {
+          player.y = s.y + s.h;
+          player.vy = 1;
+          hitBlock(s);
         }
-        player.onGround = true;
-        player.homingUsed = false; player.homingCount = 0;
-        player.dashUsedUp = false; player.dashUsedH = false;
-      } else if (player.vy < 0) {
-        player.y = s.y + s.h;
-        player.vy = 1;
-        hitBlock(s);
-        if (player.homing) { player.homing = false; player.homingTarget = null; player.spinning = false; }
       }
     }
   }
