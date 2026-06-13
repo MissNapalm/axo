@@ -936,7 +936,7 @@ function killPlayer() {
 }
 
 document.getElementById('go-restart').addEventListener('click', () => location.reload());
-document.addEventListener('keydown', e => { if (e.code === 'KeyR' && dead) location.reload(); });
+document.addEventListener('keydown', e => { if ((e.code === 'KeyR' || e.code === 'Enter') && dead) location.reload(); });
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
 function drawBg() {
