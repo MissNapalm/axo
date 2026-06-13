@@ -2485,15 +2485,19 @@ function update(dt) {
     g.frame += 0.08;
     if (g.flying) {
       g.wobble += 0.04;
-      let newY = g.baseY + Math.sin(g.wobble) * 18;
-      // Push bat out of any solid platform
+      // Clamp baseY so the full wobble arc (+/-18px) never enters a block
       for (const s of solids) {
         if (s.type === 'ground') continue;
-        if (g.x + g.w > s.x && g.x < s.x + s.w && newY + g.h > s.y && newY < s.y + s.h) {
-          newY = s.y + s.h + 1; // sit just below the block
+        if (g.x + g.w > s.x && g.x < s.x + s.w) {
+          const topEdge = s.y - g.h - 18 - 2; // keep arc bottom clear
+          const botEdge = s.y + s.h + 18 + 2;  // keep arc top clear
+          if (g.baseY > topEdge && g.baseY < botEdge) {
+            // Push baseY to whichever side is closer
+            g.baseY = (g.baseY < s.y + s.h / 2) ? topEdge : botEdge;
+          }
         }
       }
-      g.y = newY;
+      g.y = g.baseY + Math.sin(g.wobble) * 18;
     }
 
     // ── Gunner state machine ────────────────────────────────────────────────
