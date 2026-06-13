@@ -791,7 +791,7 @@ function loadLevel(n) {
   redBat.hitFlash = 0; redBat.phase2 = false; redBat.state = 'idle'; redBat.stateTimer = 0;
   // Spawn red bat mini-boss for level 1 only
   if (currentLevel === 1) {
-    const rbX = (FLAG_X - 8) * TILE;
+    const rbX = 100 * TILE;
     const rbY = (groundY - 5) * TILE;
     redBat.active = true;
     redBat.x = rbX; redBat.y = rbY;
