@@ -1054,7 +1054,7 @@ function updateBoss() {
         o.dead = true; o.deadTimer = 30;
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
-        player.vy = Math.min(player.vy, -CFG.jump1 * 0.3);
+        player.vy = -3;
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false; player.homingUsed = false;
         comboCount++; comboTimer = 120;
@@ -1492,7 +1492,7 @@ function updateWraith() {
         if (clKillable) {
           cl.dead = true; cl.deadTimer = 30;
           player.homing = false; player.homingTarget = null; player.ballForm = true;
-          player.vy = Math.min(player.vy, -CFG.jump1 * 0.35);
+          player.vy = -3;
           player.vx = player.dir * CFG.moveSpeed * 1.5;
           player.homingUsed = false; comboCount++; comboTimer = 120;
           damageWraith(1);
@@ -2555,7 +2555,7 @@ function update(dt) {
         if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
-        player.vy = Math.min(player.vy, -CFG.jump1 * 0.25);
+        player.vy = -3;
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false;
       } else {
