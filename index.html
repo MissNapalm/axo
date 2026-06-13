@@ -397,8 +397,7 @@ const LEVELS = [
       {x:270,fy:6*TILE,pw:7},{x:283,fy:7*TILE,pw:7},{x:295,fy:6*TILE,pw:7},
       {x:348,fy:6*TILE,pw:7},{x:360,fy:7*TILE,pw:7},{x:372,fy:6*TILE,pw:7},
       {x:400,fy:6*TILE,pw:7},{x:412,fy:7*TILE,pw:7},{x:424,fy:6*TILE,pw:7},
-      {x:460,fy:6*TILE,pw:7},{x:472,fy:7*TILE,pw:7},{x:484,fy:6*TILE,pw:7},
-      {x:510,fy:6*TILE,pw:7},{x:522,fy:7*TILE,pw:7},{x:535,fy:6*TILE,pw:7},
+      {x:430,fy:6*TILE,pw:7},{x:442,fy:7*TILE,pw:7},{x:454,fy:6*TILE,pw:7},
     ],
   },
   // Level 2 — wide gaps, tall platforms
@@ -1596,7 +1595,7 @@ function drawRedBat() {
     ctx.translate(cx, cy);
     ctx.rotate(redBat.wobble * 3);
     ctx.scale(sc, sc);
-    _drawBatShape(0, 0, t, redBat.wobble, true, false);
+    _drawBatShape(0, 0, t, redBat.wobble, true, false, true);
     ctx.restore();
     return;
   }
@@ -1639,27 +1638,33 @@ function drawRedBat() {
 
   ctx.translate(cx, cy);
   ctx.scale(sc, sc);
-  _drawBatShape(0, 0, t, redBat.wobble, true, isCharging);
+  _drawBatShape(0, 0, t, redBat.wobble, true, isCharging, true);
   ctx.restore();
 }
 
-function _drawBatShape(cx, cy, t, wobble, isRed, fast) {
+function _drawBatShape(cx, cy, t, wobble, isRed, fast, isGreen) {
   const wingSpan = (30 + Math.sin(t * (fast ? 12 : 3) + wobble) * 10);
   const flapOff  = Math.abs(Math.sin(t * (fast ? 12 : 3) + wobble)) * 14;
-  ctx.fillStyle = '#5a0000';
+  const w1 = isGreen ? '#1a4a00' : '#5a0000';
+  const w2 = isGreen ? '#2d7a10' : '#8b1010';
+  const b1 = isGreen ? '#0a2a00' : '#3a0000';
+  const b2 = isGreen ? '#1a5500' : '#660000';
+  const e1 = isGreen ? '#00ff44' : '#ff6600';
+  const e2 = isGreen ? '#aaffcc' : '#ffcc00';
+  ctx.fillStyle = w1;
   ctx.beginPath(); ctx.moveTo(cx, cy-2); ctx.lineTo(cx-wingSpan, cy-5-flapOff); ctx.lineTo(cx-wingSpan+12, cy+7); ctx.fill();
   ctx.beginPath(); ctx.moveTo(cx, cy-2); ctx.lineTo(cx+wingSpan, cy-5-flapOff); ctx.lineTo(cx+wingSpan-12, cy+7); ctx.fill();
-  ctx.fillStyle = '#8b1010';
+  ctx.fillStyle = w2;
   ctx.beginPath(); ctx.moveTo(cx, cy-1); ctx.lineTo(cx-wingSpan*0.6, cy-2-flapOff*0.5); ctx.lineTo(cx-wingSpan*0.55, cy+3); ctx.fill();
   ctx.beginPath(); ctx.moveTo(cx, cy-1); ctx.lineTo(cx+wingSpan*0.6, cy-2-flapOff*0.5); ctx.lineTo(cx+wingSpan*0.55, cy+3); ctx.fill();
-  ctx.fillStyle = '#3a0000';
+  ctx.fillStyle = b1;
   ctx.beginPath(); ctx.ellipse(cx, cy, 12, 10, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#660000';
+  ctx.fillStyle = b2;
   ctx.beginPath(); ctx.ellipse(cx, cy-1, 8, 7, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#ff6600';
+  ctx.fillStyle = e1;
   ctx.beginPath(); ctx.arc(cx-4, cy-2, 4, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx+4, cy-2, 4, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#ffcc00';
+  ctx.fillStyle = e2;
   ctx.beginPath(); ctx.arc(cx-4, cy-2, 1.8, 0, Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(cx+4, cy-2, 1.8, 0, Math.PI*2); ctx.fill();
 }
