@@ -2069,7 +2069,8 @@ function update(dt) {
   }
 
   // Space/jump while airborne — homing attack if enemy nearby
-  if (jumpJustPressed && !player.onGround && !player.homing) {
+  // homingUsed resets on landing OR on a successful kill, so kills chain but misses don't
+  if (jumpJustPressed && !player.onGround && !player.homing && !player.homingUsed) {
     const target = nearestLiveGoomba();
     if (target) {
       player.homing = true;
