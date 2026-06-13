@@ -77,6 +77,7 @@
     <option value="10">LVL 11</option>
     <option value="11">BOSS: LEVIATHAN</option>
     <option value="12">BOSS: WRAITH</option>
+    <option value="13">BOSS: WARDEN</option>
   </select>
 </div>
 <canvas id="c" width="800" height="450"></canvas>
@@ -437,6 +438,21 @@ const LEVELS = [
     goombas: [],
     flyers: [],
   },
+  // Level 14 — BOSS: THE WARDEN
+  {
+    isBossLevel: true,
+    bossType: 'warden',
+    gaps: [],
+    platforms: [
+      {x:5,y:10,w:6,t:'brick'}, {x:20,y:7,w:6,t:'brick'}, {x:38,y:4,w:6,t:'qblock'},
+      {x:55,y:8,w:6,t:'brick'}, {x:72,y:5,w:6,t:'brick'}, {x:90,y:3,w:6,t:'qblock'},
+      {x:108,y:7,w:6,t:'brick'},{x:122,y:4,w:6,t:'brick'},
+    ],
+    pipes: [],
+    coinDefs: [],
+    goombas: [],
+    flyers: [],
+  },
 ];
 
 let currentLevel = parseInt(localStorage.getItem('axo_level') || '0');
@@ -532,6 +548,7 @@ function loadLevel(n) {
   // Boss setup
   boss.active = false;
   wraith.active = false;
+  warden.active = false;
   if (lv.isBossLevel && lv.bossType === 'leviathan') {
     Object.assign(boss, {
       active: true, dead: false, deadTimer: 0,
@@ -552,6 +569,15 @@ function loadLevel(n) {
       dashWalls: [], gravZones: [], clones: [], shockwaves: [], tentacles: [],
       telegraphTimer: 0, telegraphType: '',
       surgeCount: 0, surgePhase: 'none', surgeLockX: 0,
+    });
+  } else if (lv.isBossLevel && lv.bossType === 'warden') {
+    Object.assign(warden, {
+      active: true, dead: false, deadTimer: 0,
+      hp: WARDEN_MAX_HP, maxHp: WARDEN_MAX_HP,
+      phase: 1, state: 'idle', stateTimer: 90,
+      x: 70 * TILE, y: WARDEN_GROUND - 72, vx: 0, vy: 0, dir: -1,
+      hitFlash: 0, lockFlash: 0, shakeX: 0, eyePulse: 0, invulTimer: 0,
+      onGround: true, shockwaves: [], rocks: [],
     });
   }
 
@@ -1112,16 +1138,10 @@ function drawBoss() {
 }
 
 // ── Abyssal Wraith ────────────────────────────────────────────────────────────
-const WRAITH_MAX_HP   = 28;
+const WRAITH_MAX_HP   = 24;
 const WRAITH_ARENA_X  = 10 * TILE;
 const WRAITH_ARENA_R  = 135 * TILE;
 const WRAITH_GROUND   = (groundY - 1) * TILE;
-
-// Dash-wall: a vertical barrier with one safe gap the player must dash through
-// dashWalls: [{x, gapY, gapH, life, speed}]
-// Gravity zones: [{x,y,w,h,life}] — inside these, gravity flips
-// Clones: lightweight enemy objects that mimic player movement
-// Shockwave rings on ground: [{x, r, maxR, life}]
 
 const wraith = {
   active: false,
@@ -1135,18 +1155,41 @@ const wraith = {
   dead: false, deadTimer: 0,
   flying: true,
   eyePulse: 0, shakeX: 0,
-  // phase-specific state
-  dashWalls: [],      // [{x, gapY, gapH, speed, life, warned}]
-  gravZones: [],      // [{x,y,w,h,life, maxLife}]
-  clones: [],         // [{x,y,vx,vy,hp,hitFlash,dead,deadTimer,flying,lockFlash,w,h}]
-  shockwaves: [],     // [{cx,r,maxR,life,maxLife}]
-  tentacles: [],      // [{angle, length, targetLen, speed}] — phase 3 sweeping arms
-  telegraphTimer: 0,  // countdown before attack executes
-  telegraphType: '',  // what's coming
-  invulTimer: 0,      // brief invul after phase transition
-  surgeCount: 0,      // how many surge lunges done this wave
-  surgePhase: 'none', // 'none'|'snap'|'rise'|'cooldown' — phase 4 anti-hover lunge
-  surgeLockX: 0,      // X locked to player for snap
+  dashWalls: [],
+  gravZones: [],
+  clones: [],
+  shockwaves: [],
+  tentacles: [],
+  telegraphTimer: 0,
+  telegraphType: '',
+  invulTimer: 0,
+  surgeCount: 0,
+  surgePhase: 'none',
+  surgeLockX: 0,
+};
+
+// ── The Warden ────────────────────────────────────────────────────────────────
+const WARDEN_MAX_HP  = 16;
+const WARDEN_ARENA_X = 10 * TILE;
+const WARDEN_ARENA_R = 135 * TILE;
+const WARDEN_GROUND  = (groundY - 1) * TILE;
+
+const warden = {
+  active: false,
+  x: 70 * TILE, y: WARDEN_GROUND,
+  w: 72, h: 72,
+  hp: WARDEN_MAX_HP, maxHp: WARDEN_MAX_HP,
+  phase: 1,
+  state: 'idle', stateTimer: 90,
+  vx: 0, vy: 0, dir: -1,
+  hitFlash: 0, lockFlash: 0,
+  dead: false, deadTimer: 0,
+  flying: false,
+  onGround: true,
+  eyePulse: 0, shakeX: 0,
+  shockwaves: [],
+  rocks: [],
+  invulTimer: 0,
 };
 
 function damageWraith(dmg) {
@@ -1659,6 +1702,283 @@ function drawWraith() {
   if (player.homingTarget === wraith || wraith.lockFlash > 0) drawLockOn(wraith);
 }
 
+// ── Warden functions ──────────────────────────────────────────────────────────
+function damageWarden(dmg) {
+  if (warden.dead || warden.hitFlash > 0 || warden.invulTimer > 0) return false;
+  warden.hp -= dmg;
+  warden.hitFlash = 20;
+  warden.shakeX = 8;
+  score += 500; updateHUD();
+  if (warden.hp <= 0) {
+    warden.hp = 0;
+    warden.dead = true; warden.deadTimer = 200;
+    warden.state = 'dead';
+    spawnExplosion(warden.x + warden.w / 2, warden.y + warden.h / 2, true);
+    comboCount += 8; comboTimer = 200;
+    score += 8000; updateHUD();
+    return true;
+  }
+  const newPhase = warden.hp > warden.maxHp * 0.5 ? 1 : 2;
+  if (newPhase !== warden.phase) {
+    warden.invulTimer = 80; warden.phase = newPhase;
+    warden.shockwaves = []; warden.rocks = [];
+  }
+  spawnExplosion(warden.x + warden.w / 2, warden.y + warden.h / 2, false);
+  return false;
+}
+
+function updateWarden() {
+  if (!warden.active) return;
+  if (warden.dead) {
+    warden.deadTimer--;
+    if (warden.deadTimer <= 0) { won = true; player.wonSlide = true; score += 1000; updateHUD(); }
+    return;
+  }
+
+  warden.eyePulse += 0.06;
+  if (warden.hitFlash > 0) warden.hitFlash--;
+  if (warden.shakeX > 0) warden.shakeX = Math.max(0, warden.shakeX - 1.5);
+  if (warden.invulTimer > 0) warden.invulTimer--;
+
+  const px = player.x + player.w / 2;
+  const wx = warden.x + warden.w / 2;
+
+  // Gravity
+  if (!warden.onGround) {
+    warden.vy += 0.5;
+    if (warden.vy > 22) warden.vy = 22;
+  }
+  warden.y += warden.vy;
+  if (warden.y + warden.h >= WARDEN_GROUND) {
+    warden.y = WARDEN_GROUND - warden.h;
+    const wasFalling = warden.vy > 8;
+    warden.vy = 0; warden.onGround = true;
+    if (wasFalling && warden.state === 'stomp') {
+      const cx = warden.x + warden.w / 2;
+      warden.shockwaves.push({ cx, dir:  1, r: 12, maxR: 500, life: 60, maxLife: 60 });
+      warden.shockwaves.push({ cx, dir: -1, r: 12, maxR: 500, life: 60, maxLife: 60 });
+      if (warden.phase === 2) {
+        warden.shockwaves.push({ cx: cx + 80, dir:  1, r: 8, maxR: 380, life: 50, maxLife: 50 });
+        warden.shockwaves.push({ cx: cx - 80, dir: -1, r: 8, maxR: 380, life: 50, maxLife: 50 });
+      }
+      warden.state = 'idle';
+      warden.stateTimer = 70 + Math.floor(Math.random() * 40);
+    }
+  }
+  warden.x += warden.vx;
+  warden.x = Math.max(WARDEN_ARENA_X, Math.min(WARDEN_ARENA_R - warden.w, warden.x));
+
+  // Shockwaves
+  for (let i = warden.shockwaves.length - 1; i >= 0; i--) {
+    const sw = warden.shockwaves[i];
+    sw.r += 5 + warden.phase;
+    sw.life--;
+    if (sw.life <= 0 || sw.r > sw.maxR) { warden.shockwaves.splice(i, 1); continue; }
+    const dist = Math.abs(px - sw.cx);
+    if (Math.abs(dist - sw.r) < 16 && player.onGround && player.invincible === 0) {
+      hp--; updateHPBar(); player.invincible = 60;
+      player.vy = -10;
+      if (hp <= 0) { killPlayer(); return; }
+    }
+  }
+
+  // Rocks (phase 2 charge debris)
+  for (let i = warden.rocks.length - 1; i >= 0; i--) {
+    const rk = warden.rocks[i];
+    if (rk.dead) { rk.deadTimer--; if (rk.deadTimer <= 0) warden.rocks.splice(i, 1); continue; }
+    rk.vy += 0.4;
+    rk.x += rk.vx; rk.y += rk.vy;
+    if (rk.y + 12 >= WARDEN_GROUND) { rk.y = WARDEN_GROUND - 12; rk.vy = -rk.vy * 0.5; rk.vx *= 0.85; }
+    rk.x = Math.max(WARDEN_ARENA_X, Math.min(WARDEN_ARENA_R - 12, rk.x));
+    const pR = { x: player.x, y: player.y, w: player.w, h: player.h };
+    if (rectsOverlap({ x: rk.x - 10, y: rk.y - 10, w: 20, h: 20 }, pR)) {
+      if (player.dashFrames > 0 || (player.homing && player.homingTarget === rk)) {
+        rk.dead = true; rk.deadTimer = 20;
+        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -9; player.homingUsed = false; }
+        else { player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -5; player.dashFrames = 0; }
+      } else if (player.invincible === 0) {
+        hp--; updateHPBar(); player.invincible = 60;
+        player.vy = -8; player.vx = (player.x < rk.x ? -1 : 1) * 9;
+        if (hp <= 0) { killPlayer(); return; }
+      }
+    }
+  }
+
+  // State machine
+  warden.stateTimer--;
+  warden.dir = px < wx ? -1 : 1;
+
+  if (warden.state === 'idle') {
+    if (warden.onGround) warden.vx += (warden.dir * (1.5 + warden.phase * 0.5) - warden.vx) * 0.08;
+    if (warden.stateTimer <= 0) {
+      warden.vx = 0;
+      if (Math.random() < 0.5) {
+        warden.state = 'stomp'; warden.stateTimer = 80;
+        warden.onGround = false;
+        const dx = px - wx;
+        warden.vx = Math.sign(dx) * Math.min(Math.abs(dx) * 0.06, 8) * (1 + warden.phase * 0.3);
+        warden.vy = -(13 + warden.phase * 2);
+      } else {
+        warden.state = 'charge_telegraph'; warden.stateTimer = 40;
+      }
+    }
+
+  } else if (warden.state === 'charge_telegraph') {
+    warden.vx = 0;
+    if (warden.stateTimer <= 0) {
+      warden.state = 'charge'; warden.stateTimer = 35 + Math.floor(Math.random() * 10);
+      warden.vx = warden.dir * (14 + warden.phase * 3);
+    }
+
+  } else if (warden.state === 'charge') {
+    if (warden.stateTimer <= 0 || !warden.onGround ||
+        warden.x <= WARDEN_ARENA_X + 4 || warden.x >= WARDEN_ARENA_R - warden.w - 4) {
+      if (warden.phase === 2) {
+        for (let r = 0; r < 2; r++) {
+          warden.rocks.push({
+            x: warden.x + warden.w / 2 + (r === 0 ? -20 : 20),
+            y: warden.y,
+            vx: (r === 0 ? -3 : 3) * (0.8 + Math.random() * 0.4),
+            vy: -8 - Math.random() * 4,
+            dead: false, deadTimer: 0, flying: true, w: 20, h: 20,
+          });
+        }
+      }
+      warden.vx = 0; warden.state = 'idle';
+      warden.stateTimer = 60 + Math.floor(Math.random() * 40);
+    }
+
+  } else if (warden.state === 'stomp') {
+    if (warden.stateTimer <= 0 && !warden.onGround) {
+      warden.y = WARDEN_GROUND - warden.h; warden.vy = 0; warden.onGround = true;
+      warden.state = 'idle'; warden.stateTimer = 60;
+    }
+  }
+
+  // Direct hit detection
+  const wRect = { x: warden.x + 6, y: warden.y + 6, w: warden.w - 12, h: warden.h - 12 };
+  const pRect2 = { x: player.x, y: player.y, w: player.w, h: player.h };
+  if (rectsOverlap(wRect, pRect2)) {
+    if (player.dashFrames > 0 && warden.hitFlash === 0) {
+      damageWarden(1);
+      player.vx = -Math.sign(player.vx) * 10; player.vy = -7;
+      player.dashFrames = 0; player.onGround = false;
+    } else if (player.homing && player.homingTarget === warden) {
+      damageWarden(1);
+      player.homing = false; player.homingTarget = null; player.ballForm = true;
+      player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
+      player.vx = player.dir * CFG.moveSpeed * 1.5;
+      player.homingUsed = false; comboCount++; comboTimer = 120;
+    } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
+      hp--; updateHPBar(); player.invincible = 80;
+      player.vy = -9; player.vx = (player.x < wx ? -1 : 1) * 11;
+      if (hp <= 0) { killPlayer(); return; }
+    }
+  }
+}
+
+function drawWarden() {
+  if (!warden.active) return;
+  const wsx = warden.x - camera;
+  if (wsx < -200 || wsx > W + 200) return;
+
+  const phase = warden.phase;
+  const shk = warden.shakeX > 0 ? Math.sin(performance.now() * 0.05) * warden.shakeX : 0;
+  const accentColor = phase === 1 ? '#cc6600' : '#ff2200';
+  const glowColor   = phase === 1 ? '#ff9900' : '#ff4400';
+
+  // Shockwaves
+  for (const sw of warden.shockwaves) {
+    const fade = sw.life / sw.maxLife;
+    ctx.save();
+    ctx.globalAlpha = fade * 0.9;
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 5 * fade + 2;
+    const gy2 = WARDEN_GROUND - 4;
+    ctx.beginPath();
+    if (sw.dir > 0) ctx.arc(sw.cx - camera, gy2, sw.r, Math.PI, 0);
+    else            ctx.arc(sw.cx - camera, gy2, sw.r, 0, Math.PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Rocks
+  for (const rk of warden.rocks) {
+    if (rk.dead) continue;
+    const rx = rk.x - camera;
+    ctx.save();
+    ctx.fillStyle = '#886644'; ctx.strokeStyle = accentColor; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(rx, rk.y, 10, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    if (player.homingTarget === rk || rk.lockFlash > 0) drawLockOn(rk);
+  }
+
+  // Charge telegraph arrow
+  if (warden.state === 'charge_telegraph') {
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.03);
+    ctx.save();
+    ctx.globalAlpha = 0.75 * pulse;
+    ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 28px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(warden.dir > 0 ? '►' : '◄', wsx + warden.w / 2 + warden.dir * 55, warden.y + warden.h / 2);
+    ctx.restore();
+  }
+
+  // Body
+  ctx.save();
+  ctx.translate(wsx + warden.w / 2 + shk, warden.y + warden.h / 2);
+
+  const aGrad = ctx.createRadialGradient(0, 0, warden.w * 0.15, 0, 0, warden.w * 0.9);
+  aGrad.addColorStop(0, glowColor + '55');
+  aGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = aGrad;
+  ctx.beginPath(); ctx.ellipse(0, 0, warden.w * 0.9, warden.h * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+
+  const flash = warden.hitFlash > 0 && Math.floor(warden.hitFlash / 3) % 2 === 0;
+  ctx.fillStyle = flash ? '#ffffff' : (phase === 1 ? '#2a1a0a' : '#3a0a0a');
+  const hw = warden.w / 2 - 2, hh = warden.h / 2 - 2;
+  ctx.beginPath();
+  ctx.moveTo(-hw + 10, -hh); ctx.lineTo(hw - 10, -hh);
+  ctx.quadraticCurveTo(hw, -hh, hw, -hh + 10); ctx.lineTo(hw, hh - 10);
+  ctx.quadraticCurveTo(hw, hh, hw - 10, hh); ctx.lineTo(-hw + 10, hh);
+  ctx.quadraticCurveTo(-hw, hh, -hw, hh - 10); ctx.lineTo(-hw, -hh + 10);
+  ctx.quadraticCurveTo(-hw, -hh, -hw + 10, -hh);
+  ctx.closePath(); ctx.fill();
+
+  if (!flash) {
+    ctx.fillStyle = accentColor; ctx.globalAlpha = 0.7;
+    ctx.fillRect(-hw + 6, -hh + 6, (hw - 6) * 2, 10);
+    ctx.fillRect(-hw + 6,  hh - 16, (hw - 6) * 2, 10);
+    ctx.globalAlpha = 1;
+  }
+
+  const ep = 0.6 + 0.4 * Math.abs(Math.sin(warden.eyePulse * 2));
+  ctx.globalAlpha = ep; ctx.fillStyle = glowColor;
+  ctx.beginPath(); ctx.ellipse(-16, -10, 10, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( 16, -10, 10, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#000'; ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.ellipse(-16 + warden.dir * 3, -10, 5, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( 16 + warden.dir * 3, -10, 5, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+  if (warden.state === 'charge' || warden.state === 'charge_telegraph') {
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.moveTo(-26, -20); ctx.lineTo(-6, -16); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo( 26, -20); ctx.lineTo(  6, -16); ctx.stroke();
+  }
+
+  const barW = warden.w * 2, barH = 8, barX = -barW / 2, barY = -warden.h / 2 - 22;
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#220000'; ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = phase === 1 ? '#ff9900' : '#ff2200';
+  ctx.fillRect(barX, barY, barW * (warden.hp / warden.maxHp), barH);
+  ctx.strokeStyle = '#ffffff33'; ctx.lineWidth = 1; ctx.strokeRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('THE WARDEN', 0, barY - 3);
+
+  ctx.restore();
+  if (player.homingTarget === warden || warden.lockFlash > 0) drawLockOn(warden);
+}
+
 function nearestLiveGoomba() {
   const px = player.x + player.w / 2, py = player.y + player.h / 2;
   let best = null, bestDist = Infinity;
@@ -1674,12 +1994,15 @@ function nearestLiveGoomba() {
   if (wraith.active && !wraith.dead) {
     const liveClones = wraith.clones.filter(c => !c.dead);
     if (liveClones.length > 0) {
-      // Only allow homing to the lowest-order live clone
       const minOrder = Math.min(...liveClones.map(c => c.orderNum));
       for (const c of liveClones) { if (c.orderNum === minOrder) candidates.push(c); }
     } else {
       candidates.push(wraith);
     }
+  }
+  if (warden.active && !warden.dead) {
+    for (const rk of warden.rocks) { if (!rk.dead) candidates.push(rk); }
+    candidates.push(warden);
   }
   for (const g of candidates) {
     if (g.dead) continue;
@@ -1992,6 +2315,7 @@ function update(dt) {
   // Boss update
   updateBoss();
   updateWraith();
+  updateWarden();
 
   // Flag (skip on boss level — win is triggered by boss death)
   if (!LEVELS[currentLevel].isBossLevel) {
@@ -2721,6 +3045,7 @@ function loop(ts) {
   drawGoombas();
   drawBoss();
   drawWraith();
+  drawWarden();
   drawParticlesAll();
   if (!dead) drawPlayer();
   else drawDeathAnimation();
@@ -2748,7 +3073,7 @@ function loop(ts) {
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0,0,W,H);
     if (isBoss) {
       const bt = performance.now() / 600;
-      const bossName = LEVELS[currentLevel].bossType === 'wraith' ? 'ABYSSAL WRAITH' : 'LEVIATHAN';
+      const bossName = LEVELS[currentLevel].bossType === 'wraith' ? 'ABYSSAL WRAITH' : LEVELS[currentLevel].bossType === 'warden' ? 'THE WARDEN' : 'LEVIATHAN';
       ctx.fillStyle = `hsl(${260 + Math.sin(bt)*40},80%,65%)`; ctx.font = 'bold 40px monospace'; ctx.textAlign = 'center';
       ctx.fillText(`✦ ${bossName} DEFEATED ✦`, W/2, H/2 - 20);
       ctx.fillStyle = '#aaddff'; ctx.font = '20px monospace';
@@ -2763,14 +3088,16 @@ function loop(ts) {
   }
 
   // Boss level intro hint
-  if (LEVELS[currentLevel].isBossLevel && !won && !dead && (boss.active || wraith.active)) {
+  if (LEVELS[currentLevel].isBossLevel && !won && !dead && (boss.active || wraith.active || warden.active)) {
     const t2 = performance.now() / 1000;
     if (t2 % 6 < 3) {
       ctx.save();
       ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t2 * 4);
       ctx.fillStyle = '#ff4488'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
-      const hint = wraith.active
-        ? 'DASH walls have a gap  ·  Kill CLONES to expose the Wraith  ·  JUMP shockwaves  ·  DASH tentacles'
+      const hint = warden.active
+        ? 'JUMP over CHARGE  ·  JUMP over shockwave  ·  DASH or HOMING to damage'
+        : wraith.active
+        ? 'Kill CLONES in order  ·  JUMP shockwaves  ·  HOMING to expose the Wraith'
         : 'DASH through attacks  ·  HOMING attacks hit weak points  ·  CHAIN orbs to expose the boss';
       ctx.fillText(hint, W/2, H - 18);
       ctx.restore();
