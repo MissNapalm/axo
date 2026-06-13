@@ -35,6 +35,11 @@
   #settings-panel button { margin-top: 10px; width: 100%; padding: 5px; background: #c84c0c; border: none; color: #fff; font-family: monospace; font-size: 13px; cursor: pointer; }
   #settings-panel button:hover { background: #e86020; }
   #settings-panel hr { border-color: #444; margin: 10px 0; }
+  .key-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+  .key-row span { color: #adf; flex: 1; }
+  .key-btn { background: #222; border: 1px solid #5c94fc; color: #ffdd00; font-family: monospace; font-size: 12px; padding: 3px 8px; cursor: pointer; min-width: 90px; text-align: center; }
+  .key-btn.listening { background: #113; border-color: #ff3366; color: #ff3366; animation: blink 0.6s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
   #gameover {
     display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -108,6 +113,14 @@
   </label>
 
   <hr>
+  <h3 style="margin-bottom:8px">⌨ KEY BINDINGS</h3>
+  <div class="key-row"><span>Move Left</span>   <button class="key-btn" data-action="left"></button></div>
+  <div class="key-row"><span>Move Right</span>  <button class="key-btn" data-action="right"></button></div>
+  <div class="key-row"><span>Jump / Homing</span><button class="key-btn" data-action="jump"></button></div>
+  <div class="key-row"><span>Up (aim)</span>    <button class="key-btn" data-action="up"></button></div>
+  <div class="key-row"><span>Dash</span>        <button class="key-btn" data-action="dash"></button></div>
+  <button id="s-reset-keys" style="background:#1a4060;margin-bottom:6px">Reset keys</button>
+  <hr>
 
   <button id="s-reset">Reset defaults</button>
 </div>
@@ -140,6 +153,15 @@ function loadCFG() {
 function saveCFG() { localStorage.setItem('axo_cfg', JSON.stringify(CFG)); }
 
 const CFG = loadCFG();
+
+const KEY_DEFAULTS = { left: 'ArrowLeft', right: 'ArrowRight', jump: 'Space', up: 'ArrowUp', dash: 'KeyF' };
+function loadKeys() {
+  try { const s = localStorage.getItem('axo_keys'); if (s) return { ...KEY_DEFAULTS, ...JSON.parse(s) }; } catch(e) {}
+  return { ...KEY_DEFAULTS };
+}
+function saveKeys() { localStorage.setItem('axo_keys', JSON.stringify(KEYS)); }
+const KEYS = loadKeys();
+
 const CAM_EASE = 0.12;
 
 let zoom = parseFloat(localStorage.getItem('axo_zoom') || '1');
@@ -571,13 +593,13 @@ function update(dt) {
   if (player.invincible > 0) player.invincible--;
 
   const now = performance.now();
-  const goLeft  = pressed(['ArrowLeft',  'KeyA']);
-  const goRight = pressed(['ArrowRight', 'KeyD']);
-  const jumpKey = pressed(['ArrowUp', 'KeyW', 'Space']);
+  const goLeft  = keys[KEYS.left]  || false;
+  const goRight = keys[KEYS.right] || false;
+  const jumpKey = keys[KEYS.jump]  || false;
   const jumpJustPressed = jumpKey && !prevJumpKey;
   prevJumpKey = jumpKey;
 
-  const eKey = pressed(['KeyF']);
+  const eKey = keys[KEYS.dash] || false;
   const eJustPressed = eKey && !prevEKey;
   prevEKey = eKey;
 
@@ -603,7 +625,7 @@ function update(dt) {
 
   // F — directional dash (one per airtime, supports diagonal)
   if (eJustPressed && !player.onGround && !player.homing && !player.dashUsed) {
-    const goingUp = pressed(['ArrowUp', 'KeyW']);
+    const goingUp = keys[KEYS.up] || false;
     const horizDir = goLeft ? -1 : goRight ? 1 : player.dir;
     if (goingUp && (goLeft || goRight)) {
       // diagonal: normalize so total speed = dashH
@@ -1350,6 +1372,58 @@ document.getElementById('s-reset').addEventListener('click', () => {
   Object.assign(CFG, DEFAULTS); syncSliders(); saveCFG();
 });
 syncSliders();
+
+// ── Key rebinding ─────────────────────────────────────────────────────────────
+function codeToLabel(code) {
+  if (!code) return '?';
+  if (code === 'Space') return 'Space';
+  if (code.startsWith('Arrow')) return '↑↓←→'.split('')[['Up','Down','Left','Right'].indexOf(code.slice(5))] ?? code.slice(5);
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  return code;
+}
+
+function syncKeyButtons() {
+  document.querySelectorAll('.key-btn').forEach(btn => {
+    const action = btn.dataset.action;
+    btn.textContent = codeToLabel(KEYS[action]);
+  });
+}
+
+let listeningBtn = null;
+document.querySelectorAll('.key-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (listeningBtn) listeningBtn.classList.remove('listening');
+    listeningBtn = btn;
+    btn.classList.add('listening');
+    btn.textContent = '...';
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if (!listeningBtn) return;
+  e.preventDefault();
+  if (e.code === 'Escape') {
+    listeningBtn.classList.remove('listening');
+    listeningBtn = null;
+    syncKeyButtons();
+    return;
+  }
+  const action = listeningBtn.dataset.action;
+  KEYS[action] = e.code;
+  saveKeys();
+  listeningBtn.classList.remove('listening');
+  listeningBtn = null;
+  syncKeyButtons();
+}, { capture: true });
+
+document.getElementById('s-reset-keys').addEventListener('click', () => {
+  Object.assign(KEYS, KEY_DEFAULTS);
+  saveKeys();
+  syncKeyButtons();
+});
+
+syncKeyButtons();
 </script>
 </body>
 </html>
