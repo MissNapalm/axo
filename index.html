@@ -2069,7 +2069,8 @@ function update(dt) {
   }
 
   // Space/jump while airborne — homing attack if enemy nearby
-  if (jumpJustPressed && !player.onGround && !player.homing) {
+  // One home per airborne phase; kill refunds it, landing resets it
+  if (jumpJustPressed && !player.onGround && !player.homing && !player.homingUsed) {
     const target = nearestLiveGoomba();
     if (target) {
       player.homing = true;
@@ -2141,13 +2142,12 @@ function update(dt) {
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
         const killed = damageEnemy(tg, 1);
-        if (killed) { comboCount++; comboTimer = 120; }
+        if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
         player.vy = Math.min(player.vy, -CFG.jump1 * 0.5);
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false;
-        player.homingUsed = false;
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
         player.vy = (dy / dist) * HOMING_SPEED;
