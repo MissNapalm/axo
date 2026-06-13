@@ -2399,7 +2399,7 @@ function update(dt) {
       // Coins nudge frenzy meter (every 3 coins = 1 kill)
       if (player.frenzyTimer <= 0) {
         player.coinFrenzyAcc = (player.coinFrenzyAcc || 0) + 1;
-        if (player.coinFrenzyAcc >= 3) { player.coinFrenzyAcc -= 3; player.frenzyKills = Math.min(player.frenzyKills + 1, 7); }
+        if (player.coinFrenzyAcc >= 10) { player.coinFrenzyAcc -= 10; player.frenzyKills = Math.min(player.frenzyKills + 1, 7); }
       }
     }
   }
