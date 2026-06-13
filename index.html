@@ -3590,7 +3590,7 @@ function loop(ts) {
   }
 
   // Combo display — big text at top center
-  if (comboCount >= 1 && comboTimer > 0) {
+  if (comboCount >= 2 && comboTimer > 0) {
     const alpha = (comboTimer < 30 ? comboTimer / 30 : 1);
     const scale = 1 + Math.min((comboCount - 1) * 0.08, 0.8);
     const hue = Math.min(comboCount * 12, 120);
