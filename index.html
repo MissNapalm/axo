@@ -720,11 +720,10 @@ function update(dt) {
         const killed = damageEnemy(tg, 1);
         if (killed) { comboCount++; comboTimer = 120; }
         player.homing = false; player.homingTarget = null;
-        player.vy = -CFG.jump1 * 1.3;
-        player.vx = player.dir * CFG.moveSpeed * 2.5;
+        player.vy = -CFG.jump1 * 0.9;
+        player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.spinning = false;
         player.homingUsed = false;
-        player.dashUsedUp = false; player.dashUsedH = false;
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
         player.vy = (dy / dist) * HOMING_SPEED;
