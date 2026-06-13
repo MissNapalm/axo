@@ -262,6 +262,17 @@ const platforms = [
   { x:1130,y:7,  w:5, t:'brick'  },
   { x:1155,y:4,  w:8, t:'qblock' },
   { x:1175,y:6,  w:6, t:'brick'  },
+  // Heart blocks — hit from below to restore 1 HP
+  { x:55,  y:7,  w:1, t:'hblock' },
+  { x:175, y:7,  w:1, t:'hblock' },
+  { x:295, y:6,  w:1, t:'hblock' },
+  { x:415, y:6,  w:1, t:'hblock' },
+  { x:535, y:6,  w:1, t:'hblock' },
+  { x:660, y:7,  w:1, t:'hblock' },
+  { x:780, y:6,  w:1, t:'hblock' },
+  { x:900, y:6,  w:1, t:'hblock' },
+  { x:1020,y:7,  w:1, t:'hblock' },
+  { x:1140,y:6,  w:1, t:'hblock' },
 ];
 
 // Pipes
@@ -419,7 +430,7 @@ let cameraY = 0;
 let coins   = coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
 let goombas = goombaDefs.map((g, i) => ({ id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: 2, maxHp: 2, hitFlash: 0 }));
 let flyers  = flyerDefs.map((f, i) => ({ id: i + 1000, x: f.x * TILE, baseY: f.fy, y: f.fy, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: 2, maxHp: 2, hitFlash: 0 }));
-let heartPickups = [];   // { x, y, vy, bobTimer, collected }
+let heartPickups = [];
 let projectiles  = [];   // { x, y, vx, vy, life, flying }
 let blockHit = {};
 
@@ -524,9 +535,6 @@ function spawnDashTrail(x, y) {
   });
 }
 
-function spawnHeart(x, y) {
-  heartPickups.push({ x: x - 10, y, vy: -4, bobTimer: 0, collected: false });
-}
 
 function damageEnemy(g, dmg) {
   if (g.dead) return false;
@@ -535,7 +543,6 @@ function damageEnemy(g, dmg) {
     g.dead = true; g.deadTimer = 40;
     score += g.flying ? 200 : 100; updateHUD();
     spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
-    if (hp < MAX_HP && Math.random() < 0.3) spawnHeart(g.x + g.w / 2, g.y);
     return true; // killed
   }
   g.hitFlash = 18; // stagger flash
@@ -877,7 +884,7 @@ function update(dt) {
     if (p.life <= 0) { projectiles.splice(i, 1); continue; }
     if (rectsOverlap({ x: p.x - 5, y: p.y - 5, w: 10, h: 10 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       projectiles.splice(i, 1);
-      if (player.invincible === 0 && !player.homing) {
+      if (player.invincible === 0) {
         hp--;
         updateHPBar();
         // Knockback away from projectile direction
@@ -890,18 +897,6 @@ function update(dt) {
     }
   }
 
-  // Heart pickups
-  for (let i = heartPickups.length - 1; i >= 0; i--) {
-    const h = heartPickups[i];
-    if (h.collected) { heartPickups.splice(i, 1); continue; }
-    h.vy += 0.4; h.y += h.vy; h.bobTimer += 0.06;
-    if (h.vy > 0) h.vy *= 0.92; // float settle
-    if (rectsOverlap({ x: h.x, y: h.y, w: 20, h: 20 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
-      h.collected = true;
-      hp = Math.min(MAX_HP, hp + 1);
-      updateHPBar(); updateHUD();
-    }
-  }
 
   // Flag
   if (player.x + player.w > FLAG_X * TILE && !won) {
@@ -927,6 +922,7 @@ function hitBlock(s) {
   blockHit[s.key] = true;
   if (s.type === 'qblock') { spawnCoinPop(s.x + TILE / 2, s.y - TILE); score += 200; }
   else if (s.type === 'brick') score += 50;
+  else if (s.type === 'hblock') { hp = Math.min(MAX_HP, hp + 1); updateHPBar(); spawnCoinPop(s.x + TILE / 2, s.y - TILE); }
   updateHUD();
 }
 
@@ -1049,8 +1045,21 @@ function drawBlock(sx, sy, type) {
     // ✦ glyph
     ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
     ctx.fillText('✦', sx + TILE/2, sy + TILE - 9);
+  } else if (type === 'hblock') {
+    // Heart block — pink/red pulsing
+    const t = performance.now() / 500;
+    ctx.fillStyle = '#881133'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#cc2255';
+    ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+    ctx.globalAlpha = 0.4 + 0.3 * Math.sin(t);
+    ctx.fillStyle = '#ff6699';
+    ctx.fillRect(sx + 6, sy + 6, TILE - 12, TILE - 12);
+    ctx.globalAlpha = 1;
+    // ❤ glyph
+    ctx.fillStyle = '#ffccdd'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('❤', sx + TILE/2, sy + TILE - 8);
   } else {
-    // Used crystal — dim
+    // Used block — dim
     ctx.fillStyle = COLORS.stoneDk; ctx.fillRect(sx, sy, TILE, TILE);
     ctx.fillStyle = COLORS.stone;
     ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
@@ -1109,29 +1118,6 @@ function drawCoins() {
   }
 }
 
-function drawHearts() {
-  for (const h of heartPickups) {
-    if (h.collected) continue;
-    const sx = h.x - camera;
-    const sy = h.y + Math.sin(h.bobTimer) * 4;
-    const t = performance.now() / 400;
-    ctx.save();
-    ctx.globalAlpha = 0.9 + Math.sin(t * 3) * 0.1;
-    // draw a simple heart shape
-    const cx = sx + 10, cy = sy + 9, r = 7;
-    ctx.fillStyle = '#ff3a6e';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy + r * 0.6);
-    ctx.bezierCurveTo(cx - r * 1.2, cy - r * 0.2, cx - r * 1.5, cy - r * 1.2, cx, cy - r * 0.4);
-    ctx.bezierCurveTo(cx + r * 1.5, cy - r * 1.2, cx + r * 1.2, cy - r * 0.2, cx, cy + r * 0.6);
-    ctx.fill();
-    // shine
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.beginPath(); ctx.ellipse(cx - 2, cy - 3, 2.5, 1.5, -0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  }
-}
 
 function drawLockOn(g) {
   const sx = g.x + g.w / 2 - camera;
@@ -1407,7 +1393,6 @@ function loop(ts) {
   drawGround();
   drawPlatforms();
   drawCoins();
-  drawHearts();
   drawGoombas();
   drawParticlesAll();
   if (!dead) drawPlayer();
