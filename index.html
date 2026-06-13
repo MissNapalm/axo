@@ -827,7 +827,7 @@ function update(dt) {
     }
 
     // Shoot at player if within range and cooldown elapsed
-    if (!g.shootCooldown) g.shootCooldown = 90 + Math.floor(Math.random() * 60);
+    if (!g.shootCooldown) g.shootCooldown = 180 + Math.floor(Math.random() * 120);
     g.shootCooldown--;
     if (g.shootCooldown <= 0) {
       const dx = (player.x + player.w / 2) - (g.x + g.w / 2);
@@ -849,8 +849,8 @@ function update(dt) {
         }
       }
       g.shootCooldown = g.flying
-        ? 90 + Math.floor(Math.random() * 60)
-        : 120 + Math.floor(Math.random() * 80);
+        ? 180 + Math.floor(Math.random() * 120)
+        : 240 + Math.floor(Math.random() * 160);
     }
 
     if (g.hitFlash > 0) g.hitFlash--;
