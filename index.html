@@ -1140,13 +1140,6 @@ function drawEnemy(g) {
     ctx.restore();
     return;
   }
-  // HP pips — ground blobs only
-  if (!g.flying && g.maxHp > 1) {
-    for (let i = 0; i < g.maxHp; i++) {
-      ctx.fillStyle = i < g.hp ? '#ff88aa' : '#333';
-      ctx.beginPath(); ctx.arc(sx + 8 + i * 10, g.y - 6, 3.5, 0, Math.PI * 2); ctx.fill();
-    }
-  }
 
   if (g.flying) {
     // Bat-like flying creature — purple, wings flapping
