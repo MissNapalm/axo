@@ -2154,7 +2154,7 @@ function update(dt) {
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
-        const killed = damageEnemy(tg, tg.hp);
+        const killed = damageEnemy(tg, 1);
         if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
