@@ -838,7 +838,7 @@ function damageEnemy(g, dmg) {
     }
     // Frenzy kill counter — fills meter, R to activate
     if (player.frenzyTimer <= 0) {
-      player.frenzyKills = Math.min(player.frenzyKills + 1, 7);
+      player.frenzyKills = Math.min(player.frenzyKills + 1, 12);
     }
     return true; // killed
   }
@@ -2399,7 +2399,7 @@ function update(dt) {
       // Coins nudge frenzy meter (every 3 coins = 1 kill)
       if (player.frenzyTimer <= 0) {
         player.coinFrenzyAcc = (player.coinFrenzyAcc || 0) + 1;
-        if (player.coinFrenzyAcc >= 10) { player.coinFrenzyAcc -= 10; player.frenzyKills = Math.min(player.frenzyKills + 1, 7); }
+        if (player.coinFrenzyAcc >= 10) { player.coinFrenzyAcc -= 10; player.frenzyKills = Math.min(player.frenzyKills + 1, 12); }
       }
     }
   }
@@ -2407,7 +2407,7 @@ function update(dt) {
   // Frenzy activation (R or Q)
   if (frenzyKeyPressed) {
     frenzyKeyPressed = false;
-    if (player.frenzyKills >= 7 && player.frenzyTimer <= 0) {
+    if (player.frenzyKills >= 12 && player.frenzyTimer <= 0) {
       player.frenzyKills = 0;
       player.frenzyTimer = 900;
       player.homingUsed = false;
@@ -3183,8 +3183,7 @@ function drawPlayer() {
   ctx.save();
   // Frenzy: periodic white flash every ~40 frames
   if (player.frenzyTimer > 0) {
-    const flash = Math.max(0, Math.sin(Date.now() / 130) * 3.5);
-    if (flash > 0) ctx.filter = `brightness(${(1 + flash).toFixed(2)}) saturate(0.2)`;
+    ctx.filter = 'brightness(1.5) saturate(0.15)';
   }
   const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
@@ -3469,8 +3468,8 @@ function loop(ts) {
       ctx.fillText('FRENZY', W / 2, by - 3);
     } else {
       // Building: show kill progress toward 7
-      const frac = player.frenzyKills / 7;
-      const ready = player.frenzyKills >= 7;
+      const frac = player.frenzyKills / 12;
+      const ready = player.frenzyKills >= 12;
       const readyPulse = ready ? (0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 180))) : 0.8;
       ctx.fillStyle = ready ? `rgba(255,220,40,${readyPulse})` : 'rgba(255,180,40,0.8)';
       ctx.fillRect(bx, by, bw * frac, bh);
@@ -3480,7 +3479,7 @@ function loop(ts) {
       ctx.font = `bold 9px monospace`;
       ctx.fillStyle = ready ? `rgba(255,240,80,${readyPulse})` : '#ffb428';
       ctx.textAlign = 'center';
-      ctx.fillText(ready ? 'FRENZY READY — R' : `KILLS ${player.frenzyKills}/7`, W / 2, by - 3);
+      ctx.fillText(ready ? 'FRENZY READY — R' : `KILLS ${player.frenzyKills}/12`, W / 2, by - 3);
     }
     ctx.restore();
   }
