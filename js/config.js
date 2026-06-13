@@ -1,8 +1,8 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
-const walkSheet     = new Image(); walkSheet.src     = 'walk_sheet.png';
-const fireballSheet = new Image(); fireballSheet.src = 'fireball_sheet.png';
+const walkSheet     = new Image(); walkSheet.src     = 'assets/images/walk_sheet.png';
+const fireballSheet = new Image(); fireballSheet.src = 'assets/images/fireball_sheet.png';
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 function playSound() {}

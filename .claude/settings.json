@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\),h=fs.readFileSync\\('/Users/missnapalm/Desktop/axolotl/index.html','utf8'\\),s=h.match\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/g\\).map\\(s=>s.replace\\(/<\\\\/?script>/g,''\\)\\).join\\('\\\\n'\\);try{new Function\\(s\\);console.log\\('OK'\\)}catch\\(e\\){console.error\\(e.message.slice\\(0,300\\)\\)}\")"
+    ]
+  }
+}

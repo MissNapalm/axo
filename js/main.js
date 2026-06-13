@@ -314,18 +314,15 @@ function loop(ts) {
   const screen = document.getElementById('title-screen');
   const vid    = document.getElementById('intro-vid');
   const prompt = document.getElementById('press-enter');
-  let ready = false;
+  let dismissed = false;
 
-  vid.addEventListener('ended', () => {
-    prompt.style.display = 'block';
-    ready = true;
-  });
-
-  // If video fails to load/play, skip straight to prompt
-  vid.addEventListener('error', () => { prompt.style.display = 'block'; ready = true; });
+  vid.addEventListener('ended', () => { prompt.style.display = 'block'; });
+  vid.addEventListener('error', () => { prompt.style.display = 'block'; });
 
   function dismiss() {
-    if (!ready) return;
+    if (dismissed) return;
+    dismissed = true;
+    vid.pause();
     screen.style.display = 'none';
     loadLevel(currentLevel);
     player.hp = player.maxHp;
@@ -334,7 +331,7 @@ function loop(ts) {
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') dismiss();
+    if (e.key === 'Enter' && screen.style.display !== 'none') dismiss();
   });
 })();
 

@@ -208,6 +208,22 @@ function update(dt) {
     }
   }
 
+  // In frenzy, destroy ground/wall tiles on contact too
+  if (player.frenzyTimer > 0) {
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
+      if (!rectsOverlap(pr, s)) continue;
+      if (!s.key) s.key = `g_${s.tx}_${s.ty}`;
+      if (blockHit[s.key]) continue;
+      blockHit[s.key] = true;
+      score += 50; updateHUD();
+      spawnBlockDebris(s.x + s.w / 2, s.y + s.h / 2, 'brick');
+      playSound('hit', 0.5);
+      const idx = solids.indexOf(s);
+      if (idx !== -1) solids.splice(idx, 1);
+    }
+  }
+
   // Collide X — skip wall collision while homing so player reaches target
   if (!player.homing) {
     const nearX = getSolidsNear(player.x, player.y, player.w, player.h);
@@ -548,9 +564,6 @@ document.getElementById('go-restart').addEventListener('click', () => {
   loadLevel(currentLevel);
   player.hp = player.maxHp;
   updateHPBar();
-});
-document.addEventListener('keydown', e => {
-  if ((e.code === 'KeyR' || e.code === 'Enter') && dead) { location.reload(); return; }
 });
 
 let frenzyKeyPressed = false, frenzyKeyDev = false;
