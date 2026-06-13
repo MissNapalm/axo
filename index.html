@@ -480,6 +480,7 @@ const player = {
   homing: false,
   homingTarget: null,
   homingUsed: false,
+  frenzyTimer: 0,   // frames remaining on frenzy power-up (480 = 8s)
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -499,6 +500,7 @@ let coins   = [];
 let goombas = [];
 let flyers  = [];
 let heartPickups = [];
+let powerBoxes   = [];   // frenzy power-up crates
 let projectiles  = [];   // { x, y, vx, vy, life, flying }
 let blockHit = {};
 
@@ -554,6 +556,15 @@ function loadLevel(n) {
   });
   heartPickups = [];
   projectiles  = [];
+  // Scatter 2-3 frenzy crates across non-boss levels
+  powerBoxes = [];
+  if (!lv.isBossLevel) {
+    const count = 2 + (n % 2); // 2 or 3 per level
+    for (let i = 0; i < count; i++) {
+      const px = (80 + i * 380 + Math.floor(Math.random() * 160)) * TILE;
+      powerBoxes.push({ x: px, y: (groundY - 1) * TILE - TILE, w: TILE, h: TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 });
+    }
+  }
 
   // Boss setup
   boss.active = false;
@@ -596,7 +607,8 @@ function loadLevel(n) {
     x: TILE * 3, y: (groundY - 3) * TILE,
     vx: 0, vy: 0,
     onGround: false, jumping: false,
-    homing: false, homingTarget: null,
+    homing: false, homingTarget: null, homingUsed: false,
+    frenzyTimer: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
     dashFrames: 0, dashUsedH: false, dashUsedV: false,
     invincible: 0, dead: false, wonSlide: false,
@@ -760,7 +772,7 @@ function spawnSpindash(x, y, dir) {
 }
 
 // ── Physics ───────────────────────────────────────────────────────────────────
-const HOMING_RANGE = 190; // px — must be reasonably close to lock on
+const HOMING_RANGE = 340; // px — reasonable lock-on range
 const HOMING_SPEED = 14;
 
 let prevJumpKey = false;
@@ -898,7 +910,7 @@ function updateBoss() {
     // Orb damages player on contact
     if (!o.dead && player.invincible === 0 && !player.homing && !player.ballForm && !player.dashFrames) {
       if (rectsOverlap({ x: o.x + 3, y: o.y + 3, w: o.w - 6, h: o.h - 6 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
-        hp--; updateHPBar(); player.invincible = 80;
+        hurtPlayer(1); player.invincible = 80;
         player.vy = -8; player.vx = (player.x < o.x ? -1 : 1) * 9;
         if (hp <= 0) { killPlayer(); return; }
       }
@@ -1047,7 +1059,7 @@ function updateBoss() {
       player.vx = player.dir * CFG.moveSpeed * 1.5;
       player.homingUsed = false; comboCount++; comboTimer = 120;
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
-      hp--; updateHPBar(); player.invincible = 80;
+      hurtPlayer(1); player.invincible = 80;
       player.vy = -9; player.vx = (player.x < bx ? -1 : 1) * 10;
       if (hp <= 0) { killPlayer(); return; }
     }
@@ -1323,7 +1335,7 @@ function updateWraith() {
           // bounce off — clone is locked
           player.homing = false; player.homingTarget = null;
           player.vy = -8; player.vx = -player.vx;
-          if (player.invincible === 0) { hp--; updateHPBar(); player.invincible = 60; if (hp <= 0) { killPlayer(); return; } }
+          if (player.invincible === 0) { hurtPlayer(1); player.invincible = 60; if (hp <= 0) { killPlayer(); return; } }
         }
       } else {
         player.vx = (dx / dist) * HOMING_SPEED;
@@ -1347,7 +1359,7 @@ function updateWraith() {
         player.vy = Math.min(player.vy, -7); comboCount++; comboTimer = 120;
         damageWraith(1);
       } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
-        hp--; updateHPBar(); player.invincible = 80;
+        hurtPlayer(1); player.invincible = 80;
         player.vy = -9; player.vx = (player.x < cl.x + cl.w / 2 ? -1 : 1) * 10;
         if (hp <= 0) { killPlayer(); return; }
       }
@@ -1365,7 +1377,7 @@ function updateWraith() {
     const pdx = px - sw.cx, pdy = py - (WRAITH_GROUND - 4);
     const dist = Math.hypot(pdx, pdy);
     if (Math.abs(dist - sw.r) < 14 && player.onGround && player.invincible === 0) {
-      hp--; updateHPBar(); player.invincible = 60;
+      hurtPlayer(1); player.invincible = 60;
       player.vy = -10;
       if (hp <= 0) { killPlayer(); return; }
     }
@@ -1390,7 +1402,7 @@ function updateWraith() {
         damageWraith(1);
         player.vx = -Math.sign(player.vx) * 8; player.vy = -5; player.dashFrames = 0;
       } else if (!player.homing && !player.ballForm && player.invincible === 0) {
-        hp--; updateHPBar(); player.invincible = 70;
+        hurtPlayer(1); player.invincible = 70;
         player.vy = -8; player.vx = (player.x < tipX ? -1 : 1) * 9;
         if (hp <= 0) { killPlayer(); return; }
       }
@@ -1507,7 +1519,7 @@ function updateWraith() {
           player.vx = -Math.sign(player.vx || 1) * 14; player.vy = -10; player.dashFrames = 0;
           wraith.surgePhase = 'cooldown'; wraith.vy = -5;
         } else if (player.invincible === 0) {
-          hp -= 2; updateHPBar(); player.invincible = 100;
+          hurtPlayer(2); player.invincible = 100;
           player.vy = player.vy < 0 ? 12 : -10;
           player.vx = (player.x < wraith.x + wraith.w / 2 ? -1 : 1) * 12;
           if (hp <= 0) { killPlayer(); return; }
@@ -1550,7 +1562,7 @@ function updateWraith() {
       player.vx = player.dir * CFG.moveSpeed * 1.5;
       player.homingUsed = false; comboCount++; comboTimer = 120;
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
-      hp--; updateHPBar(); player.invincible = 80;
+      hurtPlayer(1); player.invincible = 80;
       player.vy = -9; player.vx = (player.x < wx ? -1 : 1) * 11;
       if (hp <= 0) { killPlayer(); return; }
     }
@@ -1801,7 +1813,7 @@ function updateWarden() {
     if (sw.life <= 0 || sw.r > sw.maxR) { warden.shockwaves.splice(i, 1); continue; }
     const dist = Math.abs(px - sw.cx);
     if (Math.abs(dist - sw.r) < 16 && player.onGround && player.invincible === 0) {
-      hp--; updateHPBar(); player.invincible = 60;
+      hurtPlayer(1); player.invincible = 60;
       player.vy = -10;
       if (hp <= 0) { killPlayer(); return; }
     }
@@ -1822,7 +1834,7 @@ function updateWarden() {
         if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -9; player.homingUsed = false; }
         else { player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -5; player.dashFrames = 0; }
       } else if (player.invincible === 0) {
-        hp--; updateHPBar(); player.invincible = 60;
+        hurtPlayer(1); player.invincible = 60;
         player.vy = -8; player.vx = (player.x < rk.x ? -1 : 1) * 9;
         if (hp <= 0) { killPlayer(); return; }
       }
@@ -1895,7 +1907,7 @@ function updateWarden() {
       player.vx = player.dir * CFG.moveSpeed * 1.5;
       player.homingUsed = false; comboCount++; comboTimer = 120;
     } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
-      hp--; updateHPBar(); player.invincible = 80;
+      hurtPlayer(1); player.invincible = 80;
       player.vy = -9; player.vx = (player.x < wx ? -1 : 1) * 11;
       if (hp <= 0) { killPlayer(); return; }
     }
@@ -2069,8 +2081,8 @@ function update(dt) {
   }
 
   // Space/jump while airborne — homing attack if enemy nearby
-  // One home per airborne phase; kill refunds it, landing resets it
-  if (jumpJustPressed && !player.onGround && !player.homing && !player.homingUsed) {
+  // Frenzy bypasses the one-per-jump limit
+  if (jumpJustPressed && !player.onGround && !player.homing && (!player.homingUsed || player.frenzyTimer > 0)) {
     const target = nearestLiveGoomba();
     if (target) {
       player.homing = true;
@@ -2251,6 +2263,21 @@ function update(dt) {
     }
   }
 
+  // Frenzy power-up tick
+  if (player.frenzyTimer > 0) player.frenzyTimer--;
+
+  // Power boxes
+  for (const pb of powerBoxes) {
+    if (pb.collected) continue;
+    pb.bobTimer += 0.05;
+    if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      pb.collected = true;
+      player.frenzyTimer = 480;
+      player.homingUsed = false;
+      spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
+    }
+  }
+
   // Heart pickups
   const groundFloor = (groundY - 1) * TILE;
   for (let i = heartPickups.length - 1; i >= 0; i--) {
@@ -2389,6 +2416,12 @@ function hitBlock(s) {
   else if (s.type === 'brick') score += 50;
   else if (s.type === 'hblock') { hp = Math.min(MAX_HP, hp + 1); updateHPBar(); }
   updateHUD();
+}
+
+function hurtPlayer(dmg = 1) {
+  // Frenzy: 50% chance to block damage entirely
+  if (player.frenzyTimer > 0 && Math.random() < 0.5) return;
+  hp -= dmg; updateHPBar();
 }
 
 function killPlayer() {
@@ -2767,6 +2800,46 @@ function drawHeartPickups() {
   }
 }
 
+function drawPowerBoxes() {
+  for (const pb of powerBoxes) {
+    if (pb.collected) continue;
+    const sx = pb.x - camera;
+    if (sx < -40 || sx > W + 40) continue;
+    const bob = Math.sin(pb.bobTimer) * 3;
+    const sy = pb.y + bob;
+    const t = pb.bobTimer;
+    // Glowing crate
+    const glow = Math.abs(Math.sin(t * 1.5));
+    ctx.save();
+    // Outer glow
+    ctx.shadowColor = `rgba(80,220,255,${0.4 + glow * 0.5})`;
+    ctx.shadowBlur = 12 + glow * 10;
+    // Box body
+    ctx.fillStyle = '#0a2a40';
+    ctx.strokeStyle = `rgba(80,220,255,${0.7 + glow * 0.3})`;
+    ctx.lineWidth = 2;
+    ctx.fillRect(sx, sy, pb.w, pb.h);
+    ctx.strokeRect(sx, sy, pb.w, pb.h);
+    // Inner cross lines
+    ctx.strokeStyle = `rgba(80,220,255,${0.4 + glow * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx + pb.w / 2, sy + 4);
+    ctx.lineTo(sx + pb.w / 2, sy + pb.h - 4);
+    ctx.moveTo(sx + 4, sy + pb.h / 2);
+    ctx.lineTo(sx + pb.w - 4, sy + pb.h / 2);
+    ctx.stroke();
+    // "F" letter
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = `rgba(80,220,255,${0.8 + glow * 0.2})`;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('F', sx + pb.w / 2, sy + pb.h / 2);
+    ctx.restore();
+  }
+}
+
 function drawLockOn(g) {
   const sx = g.x + g.w / 2 - camera;
   const sy = g.y + g.h / 2;
@@ -3130,6 +3203,7 @@ function loop(ts) {
   drawPlatforms();
   drawCoins();
   drawHeartPickups();
+  drawPowerBoxes();
   drawGoombas();
   drawBoss();
   drawWraith();
@@ -3152,6 +3226,26 @@ function loop(ts) {
     ctx.font = '13px monospace';
     ctx.fillStyle = '#a09080';
     ctx.fillText(`x${comboCount}`, 12, H - 28);
+    ctx.restore();
+  }
+
+  // Frenzy bar
+  if (player.frenzyTimer > 0) {
+    const frac = player.frenzyTimer / 480;
+    const bw = 120, bh = 8, bx = W / 2 - bw / 2, by = H - 22;
+    const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    ctx.fillStyle = `rgba(80,220,255,${pulse})`;
+    ctx.fillRect(bx, by, bw * frac, bh);
+    ctx.strokeStyle = 'rgba(80,220,255,0.8)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = '#50dcff';
+    ctx.textAlign = 'center';
+    ctx.fillText('FRENZY', W / 2, by - 3);
     ctx.restore();
   }
 
