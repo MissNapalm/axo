@@ -305,6 +305,40 @@ function makeCoinDefs(fn) {
 
 // ── 11 levels ─────────────────────────────────────────────────────────────────
 const LEVELS = [
+  // Level 0 — TUTORIAL
+  {
+    isTutorial: true,
+    gaps: [{x:28,w:3}],
+    platforms: [
+      // Wide flat opening for movement/jump teaching
+      {x:5,y:8,w:8,t:'brick'},
+      // A platform gap to practice jump over
+      {x:14,y:8,w:6,t:'brick'},
+      // Raised platform for dash teaching
+      {x:22,y:6,w:6,t:'brick'},
+      // Mid-air platform cluster for homing
+      {x:35,y:6,w:5,t:'qblock'},{x:42,y:7,w:5,t:'qblock'},
+      // Brick blocks for turbo dash-break teaching (last area)
+      {x:52,y:7,w:8,t:'brick'},{x:54,y:6,w:4,t:'qblock'},
+      // Health block
+      {x:18,y:7,w:1,t:'hblock'},
+    ],
+    pipes: [{x:32,h:2}],
+    coinDefs: makeCoinDefs((cl)=>{cl(6,13,9);cl(15,22,6);cl(23,30,4);}),
+    goombas: [
+      // Tough goomba (2-hit) near step 6 zone — slow patrol
+      {x:37,pl:35,pr:44},
+      // Dense cluster for frenzy step
+      {x:48,pl:44,pr:53},{x:52,pl:46,pr:56},{x:55,pl:50,pr:60},
+      {x:58,pl:52,pr:64},{x:62,pl:56,pr:68},
+    ],
+    flyers: [
+      // Bats for homing practice
+      {x:38,fy:6*TILE,pw:5},{x:42,fy:7*TILE,pw:5},{x:46,fy:6*TILE,pw:5},
+      // Extra bats for frenzy chaining
+      {x:53,fy:6*TILE,pw:4},{x:57,fy:7*TILE,pw:4},{x:61,fy:6*TILE,pw:4},
+    ],
+  },
   // Level 1
   {
     // Ground gaps — wide pits at each vertical climb zone
@@ -577,6 +611,33 @@ function groundInGap(tx) {
 
 const FLAG_X = 580; // end of level 1 — leads to boss
 
+// ── Tutorial state ───────────────────────────────────────────────────────────
+const TUT_STEPS = [
+  { msg: 'Use LEFT / RIGHT keys to move!',               key: 'ARROW KEYS' },
+  { msg: 'Press JUMP (L) to jump!',                      key: 'L' },
+  { msg: 'While airborne, press DASH (F) to dash!',      key: 'F in air' },
+  { msg: 'Hold UP (E) + DASH to dash upward!',           key: 'E + F' },
+  { msg: 'Near an enemy in the air, press JUMP to home-attack!', key: 'JUMP near enemy' },
+  { msg: 'Some enemies take 2+ hits — hit again!',       key: 'HIT TWICE' },
+  { msg: 'Kill enemies to fill the TURBO bar!\nPress R when it\'s full to activate TURBO!', key: 'R' },
+  { msg: 'In TURBO, dash or home into blocks to DESTROY them!', key: 'DASH / HOME + BLOCK' },
+  { msg: 'Tutorial complete! Good luck — here comes Level 1!', key: null },
+];
+const tut = {
+  step: 0,          // current step index
+  frozen: true,     // gameplay frozen (showing step card)
+  done: false,      // tutorial finished
+  hasMoved: false,
+  hasJumped: false,
+  hasDashed: false,
+  hasUpDashed: false,
+  hasHomed: false,
+  hasHitTough: false,  // hit an enemy that survived
+  hasActivatedTurbo: false,
+  hasBrokenBlock: false,
+  anyKeyTimer: 0,
+};
+
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
 let comboCount = 0, comboTimer = 0;
@@ -660,6 +721,14 @@ function loadLevel(n) {
   solids = buildSolids();
   blockHit = {};
 
+  // Reset tutorial state when entering tutorial level
+  if (lv.isTutorial) {
+    Object.assign(tut, { step:0, frozen:true, done:false, hasMoved:false, hasJumped:false,
+      hasDashed:false, hasUpDashed:false, hasHomed:false, hasHitTough:false,
+      hasActivatedTurbo:false, hasBrokenBlock:false, anyKeyTimer:30 });
+    tutSetupAnyKey();
+  }
+
   coins = lv.coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
   // Every 3rd enemy in level 2+ is a 'shocker'
   const lvl = n; // 0-indexed
@@ -728,7 +797,23 @@ function loadLevel(n) {
       x: 70 * TILE, y: WARDEN_HOVER - 72, vx: 0, vy: 0, dir: -1,
       hitFlash: 0, lockFlash: 0, shakeX: 0, eyePulse: 0, invulTimer: 0,
       onGround: true, shockwaves: [], rocks: [],
+      vulnTimer: 0, homingCooldown: 0,
     });
+    // Spawn 3 red sentinel bats at random x positions in the arena
+    const arenaW = WARDEN_ARENA_R - WARDEN_ARENA_X;
+    warden.sentinels = [0.2, 0.5, 0.8].map((frac, i) => ({
+      id: 9000 + i,
+      x: WARDEN_ARENA_X + arenaW * frac + (Math.random() - 0.5) * 80,
+      y: (groundY - 5) * TILE,
+      baseY: (groundY - 5) * TILE,
+      w: TILE, h: TILE,
+      vx: (i % 2 === 0 ? 1 : -1) * 1.5,
+      wobble: Math.random() * Math.PI * 2,
+      dead: false, deadTimer: 0,
+      hp: 1, maxHp: 1, hitFlash: 0,
+      flying: true, type: 'sentinel',
+      pl: WARDEN_ARENA_X, pr: WARDEN_ARENA_R,
+    }));
   }
 
   // reset player
@@ -858,6 +943,10 @@ function damageEnemy(g, dmg) {
   if (g.type === 'shocker') spawnShockerBurst(g);
   g.hitFlash = 18; // stagger flash
   playSound('hit', 0.35);
+  // Tutorial: enemy survived a hit → step 5 complete
+  if (LEVELS[currentLevel]?.isTutorial && tut.step === 5 && !tut.hasHitTough) {
+    tut.hasHitTough = true; tutAdvance();
+  }
   return false; // hurt but alive
 }
 
@@ -1363,6 +1452,8 @@ const warden = {
   rocks: [],
   invulTimer: 0,
   homingCooldown: 0,
+  vulnTimer: 0,       // frames the warden is open to damage after all sentinels die
+  sentinels: [],      // 3 red pulsing bats
 };
 
 function damageWraith(dmg) {
@@ -1878,6 +1969,7 @@ function drawWraith() {
 // ── Warden functions ──────────────────────────────────────────────────────────
 function damageWarden(dmg) {
   if (warden.dead || warden.hitFlash > 0 || warden.invulTimer > 0) return false;
+  if (warden.vulnTimer <= 0) return false; // sentinels must all be dead first
   warden.hp -= dmg;
   warden.hitFlash = 20;
   warden.shakeX = 8;
@@ -1886,9 +1978,9 @@ function damageWarden(dmg) {
   player.frenzyKills = Math.min(player.frenzyKills + 2.4, 12);
   if (warden.hp <= 0) {
     warden.hp = 0;
-    warden.dead = true; warden.deadTimer = 300; // 5s: 3s shake + 2s slow explosion
+    warden.dead = true; warden.deadTimer = 300; // 5s total: 3s shake + 2s grand explosion
     warden.state = 'dead';
-    warden.deathPhase = 'shake'; // shake → explode
+    warden.deathPhase = 'shake';
     warden.deathExpTimer = 0;
     comboCount += 8; comboTimer = 200;
     score += 8000; updateHUD();
@@ -1908,23 +2000,31 @@ function updateWarden() {
   if (warden.dead) {
     warden.deadTimer--;
     if (warden.deathPhase === 'shake') {
-      // 3 seconds of violent shaking with small particle bursts
-      warden.shakeX = 12 + Math.sin(warden.deadTimer * 0.8) * 8;
+      // 3s violent shake with escalating small bursts
+      const intensity = 1 + (180 - warden.deadTimer) / 60;
+      warden.shakeX = (10 + intensity * 6) * (Math.random() > 0.5 ? 1 : -1);
       warden.deathExpTimer--;
+      const burstRate = Math.max(3, 10 - Math.floor(intensity * 2));
       if (warden.deathExpTimer <= 0) {
-        warden.deathExpTimer = 8;
-        const ox = (Math.random() - 0.5) * warden.w;
-        const oy = (Math.random() - 0.5) * warden.h;
+        warden.deathExpTimer = burstRate;
+        const ox = (Math.random() - 0.5) * warden.w * 1.2;
+        const oy = (Math.random() - 0.5) * warden.h * 1.2;
         spawnExplosion(warden.x + warden.w / 2 + ox, warden.y + warden.h / 2 + oy, false);
       }
-      if (warden.deadTimer <= 120) warden.deathPhase = 'explode';
+      if (warden.deadTimer <= 120) { warden.deathPhase = 'explode'; warden.deathExpTimer = 0; }
     } else if (warden.deathPhase === 'explode') {
-      // 2 seconds of slow-motion giant explosion
+      // 2s massive slow-motion chain explosions across whole screen width
+      warden.shakeX = 20 * (Math.random() > 0.5 ? 1 : -1);
       warden.deathExpTimer--;
       if (warden.deathExpTimer <= 0) {
-        warden.deathExpTimer = 18;
-        spawnExplosion(warden.x + warden.w / 2 + (Math.random()-0.5)*80,
-                       warden.y + warden.h / 2 + (Math.random()-0.5)*80, true);
+        warden.deathExpTimer = 10;
+        for (let e = 0; e < 3; e++) {
+          spawnExplosion(
+            warden.x + warden.w / 2 + (Math.random() - 0.5) * 200,
+            warden.y + warden.h / 2 + (Math.random() - 0.5) * 120,
+            e % 2 === 0
+          );
+        }
       }
     }
     if (warden.deadTimer <= 0) { won = true; player.wonSlide = true; score += 1000; updateHUD(); }
@@ -1936,6 +2036,53 @@ function updateWarden() {
   if (warden.shakeX > 0) warden.shakeX = Math.max(0, warden.shakeX - 1.5);
   if (warden.invulTimer > 0) warden.invulTimer--;
   if (warden.homingCooldown > 0) warden.homingCooldown--;
+  if (warden.vulnTimer > 0) warden.vulnTimer--;
+
+  // ── Sentinel bats ─────────────────────────────────────────────────────────
+  const allSentinelsDead = warden.sentinels.every(s => s.dead);
+  for (let si = warden.sentinels.length - 1; si >= 0; si--) {
+    const s = warden.sentinels[si];
+    if (s.dead) {
+      s.deadTimer--;
+      if (s.deadTimer <= 0) warden.sentinels.splice(si, 1);
+      continue;
+    }
+    if (s.hitFlash > 0) s.hitFlash--;
+    // Wobble patrol
+    s.wobble += 0.05;
+    s.x += s.vx;
+    if (s.x < s.pl || s.x + s.w > s.pr) s.vx *= -1;
+    s.y = s.baseY + Math.sin(s.wobble) * 22;
+    // Respawn vulnTimer when last sentinel dies
+    if (!allSentinelsDead && warden.sentinels.filter(x => !x.dead).length === 1) {
+      // handled below after hit detection
+    }
+    // Player collision
+    const sr = { x: s.x + 2, y: s.y + 2, w: s.w - 4, h: s.h - 4 };
+    const pr0 = { x: player.x, y: player.y, w: player.w, h: player.h };
+    if (rectsOverlap(sr, pr0)) {
+      const canKill = player.dashFrames > 0 || player.homing || player.spinning ||
+                      (player.vy > 0 && player.y + player.h < s.y + s.h / 2 + 10);
+      if (canKill && !s.hitFlash) {
+        s.dead = true; s.deadTimer = 30;
+        spawnExplosion(s.x + s.w / 2, s.y + s.h / 2, true);
+        playSound('hit', 0.7);
+        score += 300; updateHUD();
+        comboCount++; comboTimer = 120;
+        if (player.homing) { player.homing = false; player.homingTarget = null; player.ballForm = true; player.vy = -9; }
+        else if (player.dashFrames > 0) { player.vx = -Math.sign(player.vx||1)*8; player.vy = -6; player.dashFrames = 0; }
+        else { player.vy = Math.min(player.vy, -6); }
+        // If this was the last sentinel, open warden for 5s
+        if (warden.sentinels.filter(x => !x.dead).length === 0) {
+          warden.vulnTimer = 300;
+        }
+      } else if (!canKill && player.invincible === 0) {
+        hurtPlayer(1); player.invincible = 60;
+        player.vy = -8; player.vx = (player.x < s.x ? -1 : 1) * 9;
+        if (hp <= 0) { killPlayer(); return; }
+      }
+    }
+  }
 
   const px = player.x + player.w / 2;
   const wx = warden.x + warden.w / 2;
@@ -2066,18 +2213,25 @@ function updateWarden() {
   // Direct hit detection
   const wRect = { x: warden.x + 6, y: warden.y + 6, w: warden.w - 12, h: warden.h - 12 };
   const pRect2 = { x: player.x, y: player.y, w: player.w, h: player.h };
+  const wardenVuln = warden.vulnTimer > 0;
   if (rectsOverlap(wRect, pRect2)) {
     if (player.dashFrames > 0 && warden.hitFlash === 0) {
-      damageWarden(1);
-      player.vx = -Math.sign(player.vx) * 10; player.vy = -7;
-      player.dashFrames = 0; player.onGround = false;
-      warden.homingCooldown = 90; // brief cooldown after dash hit too
+      if (wardenVuln) {
+        damageWarden(1);
+        player.vx = -Math.sign(player.vx) * 10; player.vy = -7;
+        player.dashFrames = 0; player.onGround = false;
+      } else {
+        // Not vulnerable — bounce hard
+        player.vx = -Math.sign(player.vx || 1) * 12; player.vy = -8;
+        player.dashFrames = 0;
+        hurtPlayer(1); player.invincible = 60;
+        if (hp <= 0) { killPlayer(); return; }
+      }
     } else if (player.homing && player.homingTarget === warden) {
-      const frenzy = player.frenzyTimer > 0;
-      if (!frenzy && warden.homingCooldown > 0) {
-        // Block the home in normal mode — bounce player off
+      if (!wardenVuln) {
+        // Shield bounce — kill the home
         player.homing = false; player.homingTarget = null;
-        player.vx = -Math.sign(player.vx || 1) * 8; player.vy = -7;
+        player.vx = -Math.sign(player.vx || 1) * 9; player.vy = -8;
         hurtPlayer(1); player.invincible = 60;
         if (hp <= 0) { killPlayer(); return; }
       } else {
@@ -2086,7 +2240,6 @@ function updateWarden() {
         player.vy = Math.min(player.vy, -CFG.jump1 * 0.7);
         player.vx = player.dir * CFG.moveSpeed * 1.5;
         player.homingUsed = false; comboCount++; comboTimer = 120;
-        warden.homingCooldown = frenzy ? 0 : 120; // 2s cooldown in normal mode
       }
     } else if (warden.state === 'charge' && player.invincible === 0) {
       // Charge attack damages player
@@ -2201,6 +2354,48 @@ function drawWarden() {
 
   ctx.restore();
   if (player.homingTarget === warden || warden.lockFlash > 0) drawLockOn(warden);
+
+  // Draw sentinel bats
+  const now2 = performance.now() / 1000;
+  for (const s of warden.sentinels) {
+    if (s.dead) continue;
+    const sx = s.x - camera;
+    const pulse = 0.6 + 0.4 * Math.sin(now2 * 6);
+    ctx.save();
+    // Red glow
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 16 * pulse;
+    // Body
+    ctx.fillStyle = s.hitFlash > 0 ? '#ffffff' : `rgb(${Math.round(180+75*pulse)},0,0)`;
+    ctx.beginPath();
+    ctx.arc(sx + s.w / 2, s.y + s.h / 2, s.w / 2 - 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Wings
+    ctx.fillStyle = `rgba(220,0,0,${0.5 + 0.4 * pulse})`;
+    const wt = Math.sin(now2 * 12) * 0.4;
+    ctx.beginPath();
+    ctx.ellipse(sx + s.w/2 - 14, s.y + s.h/2, 12, 5, -0.4 + wt, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(sx + s.w/2 + 14, s.y + s.h/2, 12, 5,  0.4 - wt, 0, Math.PI*2); ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(sx + s.w/2 - 5, s.y + s.h/2 - 2, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + s.w/2 + 5, s.y + s.h/2 - 2, 3, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    if (player.homingTarget === s) drawLockOn(s);
+  }
+
+  // Vulnerability flash indicator
+  if (warden.vulnTimer > 0) {
+    const vt = warden.vulnTimer / 300;
+    ctx.save();
+    ctx.globalAlpha = 0.35 * (0.5 + 0.5 * Math.sin(now2 * 10));
+    ctx.fillStyle = '#00ffcc';
+    ctx.fillRect(wsx - 8, warden.y - 8, warden.w + 16, warden.h + 16);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
 }
 
 function nearestLiveGoomba(range = HOMING_RANGE) {
@@ -2226,7 +2421,13 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
   }
   if (warden.active && !warden.dead) {
     for (const rk of warden.rocks) { if (!rk.dead) candidates.push(rk); }
-    candidates.push(warden);
+    // Prioritise live sentinels; only add warden itself when vulnerable
+    const liveSentinels = warden.sentinels.filter(s => !s.dead);
+    if (liveSentinels.length > 0) {
+      for (const s of liveSentinels) candidates.push(s);
+    } else {
+      candidates.push(warden);
+    }
   }
   for (const g of candidates) {
     if (g.dead) continue;
@@ -2237,10 +2438,75 @@ function nearestLiveGoomba(range = HOMING_RANGE) {
   return best;
 }
 
+function tutAdvance() {
+  tut.step++;
+  // Side effects when entering a step
+  if (tut.step === 6) {
+    // Auto-fill frenzy bar so player can activate immediately
+    player.frenzyKills = 12;
+  }
+  if (tut.step >= TUT_STEPS.length - 1) {
+    // Show final "tutorial complete" card then auto-load level 1
+    tut.step = TUT_STEPS.length - 1;
+    tut.frozen = true;
+    tut.anyKeyTimer = 999999; // no any-key dismiss on final step
+    setTimeout(() => {
+      tut.done = true;
+      tut.frozen = false;
+      loadLevel(1);
+      player.x = 2 * TILE; player.y = groundY * TILE - player.h;
+      player.vx = 0; player.vy = 0; camera = 0;
+    }, 2500);
+    return;
+  }
+  tut.frozen = true;
+  tut.anyKeyTimer = 30; // grace frames before any-key detection
+}
+
+function tutCheck() {
+  if (!LEVELS[currentLevel].isTutorial || tut.done) return;
+  if (tut.frozen) { if (tut.anyKeyTimer > 0) tut.anyKeyTimer--; return; }
+  const s = tut.step;
+  if (s === 0 && !tut.hasMoved) {
+    if (keys[KEYS.left] || keys[KEYS.right]) { tut.hasMoved = true; tutAdvance(); }
+  } else if (s === 1 && !tut.hasJumped) {
+    if (!player.onGround && player.vy < 0) { tut.hasJumped = true; tutAdvance(); }
+  } else if (s === 2 && !tut.hasDashed) {
+    if (!player.onGround && player.dashFrames > 0 && !player.dashingUp) { tut.hasDashed = true; tutAdvance(); }
+  } else if (s === 3 && !tut.hasUpDashed) {
+    if (!player.onGround && player.dashFrames > 0 && player.dashingUp) { tut.hasUpDashed = true; tutAdvance(); }
+  } else if (s === 4 && !tut.hasHomed) {
+    if (player.homing) { tut.hasHomed = true; tutAdvance(); }
+  } else if (s === 5 && !tut.hasHitTough) {
+    // Detected in damageEnemy when enemy survives
+  } else if (s === 6 && !tut.hasActivatedTurbo) {
+    if (player.frenzyTimer > 0) { tut.hasActivatedTurbo = true; tutAdvance(); }
+  } else if (s === 7 && !tut.hasBrokenBlock) {
+    // Detected in hitBlock
+  }
+}
+
+let tutAnyKeyListener = null;
+function tutSetupAnyKey() {
+  if (tutAnyKeyListener) return;
+  tutAnyKeyListener = (e) => {
+    if (!LEVELS[currentLevel]?.isTutorial || tut.done) return;
+    if (!tut.frozen || tut.anyKeyTimer > 0) return;
+    if (e.code === 'KeyR' || e.code === 'KeyQ') return; // don't consume frenzy key
+    tut.frozen = false;
+  };
+  document.addEventListener('keydown', tutAnyKeyListener);
+}
+
 function update(dt) {
   if (won && !player.wonSlide) return;
   if (dead) return;
   if (turboFlash > 0) { turboFlash--; return; } // freeze during turbo activation
+  if (LEVELS[currentLevel].isTutorial && tut.frozen) {
+    // Run only essential ticks while frozen (particles, timers) but skip gameplay
+    if (tut.anyKeyTimer > 0) tut.anyKeyTimer--;
+    return;
+  }
 
   player.w = CFG.axoSize;
   player.h = CFG.axoSize;
@@ -2493,7 +2759,7 @@ function update(dt) {
     frenzyKeyPressed = false; frenzyKeyDev = false;
     if ((devMode || player.frenzyKills >= 12) && player.frenzyTimer <= 0) {
       player.frenzyKills = 0;
-      player.frenzyTimer = 900;
+      player.frenzyTimer = 780;
       player.homingUsed = false;
       turboFlash = 70;
       hp = MAX_HP; updateHPBar();
@@ -2672,17 +2938,20 @@ function update(dt) {
   }
 
 
+  // Tutorial step detection
+  tutCheck();
+
   // Boss update
   updateBoss();
   updateWraith();
   updateWarden();
 
   // Flag — loads warden boss level on level 1, wins on other non-boss levels
-  if (!LEVELS[currentLevel].isBossLevel) {
+  if (!LEVELS[currentLevel].isBossLevel && !LEVELS[currentLevel].isTutorial) {
     if (player.x + player.w > FLAG_X * TILE && !won) {
-      if (currentLevel === 0) {
-        // Level 1 flag: go to warden boss (index 13)
-        loadLevel(13);
+      if (currentLevel === 1) {
+        // Level 1 flag: go to warden boss (index 14)
+        loadLevel(14);
         player.x = 2 * TILE; player.y = groundY * TILE - player.h;
         player.vx = 0; player.vy = 0; camera = 0;
       } else {
@@ -2743,6 +3012,10 @@ function hitBlock(s) {
   // Remove block entirely from solids array
   const idx = solids.indexOf(s);
   if (idx !== -1) solids.splice(idx, 1);
+  // Tutorial: block destroyed while in frenzy/dash → step 7 complete
+  if (LEVELS[currentLevel]?.isTutorial && tut.step === 7 && !tut.hasBrokenBlock && player.frenzyTimer > 0) {
+    tut.hasBrokenBlock = true; tutAdvance();
+  }
 }
 
 function hurtPlayer(dmg = 1) {
@@ -3366,6 +3639,7 @@ function drawGoombas() {
 }
 
 function drawFlagPole() {
+  if (LEVELS[currentLevel]?.isTutorial) return;
   const sx = FLAG_X * TILE - camera;
   const t = performance.now() / 500;
   // Beacon pillar
@@ -3734,7 +4008,7 @@ function loop(ts) {
     ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
     if (player.frenzyTimer > 0) {
       // Active: drain bar pulses cyan
-      const frac = player.frenzyTimer / 900;
+      const frac = player.frenzyTimer / 780;
       const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
       ctx.fillStyle = `rgba(80,220,255,${pulse})`;
       ctx.fillRect(bx, by, bw * frac, bh);
@@ -3761,6 +4035,74 @@ function loop(ts) {
       ctx.fillText(ready ? 'FRENZY READY — R' : `KILLS ${player.frenzyKills}/12`, W / 2, by - 3);
     }
     ctx.restore();
+  }
+
+  // Tutorial overlay
+  if (LEVELS[currentLevel]?.isTutorial && !tut.done) {
+    const step = TUT_STEPS[tut.step];
+    if (step && tut.frozen) {
+      // Dark translucent backdrop
+      ctx.save();
+      const panelW = Math.min(W - 60, 520);
+      const panelH = 130;
+      const px = (W - panelW) / 2;
+      const py = H / 2 - panelH / 2;
+      ctx.fillStyle = 'rgba(0,0,20,0.82)';
+      // Rounded rect
+      const r = 14;
+      ctx.beginPath();
+      ctx.moveTo(px + r, py);
+      ctx.lineTo(px + panelW - r, py);
+      ctx.quadraticCurveTo(px + panelW, py, px + panelW, py + r);
+      ctx.lineTo(px + panelW, py + panelH - r);
+      ctx.quadraticCurveTo(px + panelW, py + panelH, px + panelW - r, py + panelH);
+      ctx.lineTo(px + r, py + panelH);
+      ctx.quadraticCurveTo(px, py + panelH, px, py + panelH - r);
+      ctx.lineTo(px, py + r);
+      ctx.quadraticCurveTo(px, py, px + r, py);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(100,200,255,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Step counter
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(100,200,255,0.7)';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(`STEP ${tut.step + 1} / ${TUT_STEPS.length}`, W / 2, py + 22);
+
+      // Main message (support newline)
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px monospace';
+      const lines = step.msg.split('\n');
+      const lineH = 24;
+      const startY = py + 50 - ((lines.length - 1) * lineH) / 2;
+      for (let li = 0; li < lines.length; li++) {
+        ctx.fillText(lines[li], W / 2, startY + li * lineH);
+      }
+
+      // "Press any key" prompt (blinking)
+      if (tut.anyKeyTimer <= 0) {
+        const blink = Math.sin(Date.now() / 200) > 0;
+        if (blink) {
+          ctx.fillStyle = 'rgba(200,220,255,0.7)';
+          ctx.font = '12px monospace';
+          ctx.fillText('— PRESS ANY KEY TO CONTINUE —', W / 2, py + panelH - 16);
+        }
+      }
+      ctx.restore();
+    } else if (tut.step === TUT_STEPS.length - 1 && tut.done === false) {
+      // Last step "tutorial complete" — show for a moment then auto-continue
+      ctx.save();
+      const t2 = (Date.now() % 1200) / 1200;
+      ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t2 * Math.PI * 2);
+      ctx.fillStyle = '#aaffcc';
+      ctx.font = 'bold 22px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(TUT_STEPS[TUT_STEPS.length - 1].msg, W / 2, H / 2);
+      ctx.restore();
+    }
   }
 
   // Screen-space overlays
