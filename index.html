@@ -832,7 +832,7 @@ function update(dt) {
       } else if (player.spinning || (!g.flying && player.vy > 0 && player.y + player.h < g.y + g.h / 2 + 10)) {
         damageEnemy(g, g.hp); // instant kill on stomp/spin
         player.vy = Math.min(player.vy, -6);
-      } else if (!player.homing && !player.dashFrames && player.invincible === 0) {
+      } else if (!player.homing && !player.dashFrames && player.invincible === 0 && player.homingTarget !== g) {
         hp--;
         updateHPBar();
         player.invincible = 80;
