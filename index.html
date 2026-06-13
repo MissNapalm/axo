@@ -2020,7 +2020,7 @@ function drawWarden() {
   if (player.homingTarget === warden || warden.lockFlash > 0) drawLockOn(warden);
 }
 
-function nearestLiveGoomba() {
+function nearestLiveGoomba(range = HOMING_RANGE) {
   const px = player.x + player.w / 2, py = player.y + player.h / 2;
   let best = null, bestDist = Infinity;
   // Include boss orbs and boss itself as homing targets
@@ -2049,7 +2049,7 @@ function nearestLiveGoomba() {
     if (g.dead) continue;
     const gx = g.x + g.w / 2, gy = g.y + g.h / 2;
     const dist = Math.hypot(px - gx, py - gy);
-    if (dist < HOMING_RANGE && dist < bestDist) { best = g; bestDist = dist; }
+    if (dist < range && dist < bestDist) { best = g; bestDist = dist; }
   }
   return best;
 }
@@ -2087,7 +2087,7 @@ function update(dt) {
   // Space/jump while airborne — homing attack if enemy nearby
   // Frenzy bypasses the one-per-jump limit
   if (jumpJustPressed && !player.onGround && !player.homing && (!player.homingUsed || player.frenzyTimer > 0)) {
-    const target = nearestLiveGoomba();
+    const target = nearestLiveGoomba(player.frenzyTimer > 0 ? HOMING_RANGE : 130);
     if (target) {
       player.homing = true;
       player.homingTarget = target;
