@@ -2426,8 +2426,9 @@ function update(dt) {
 
   // Frenzy activation (R or Q)
   if (frenzyKeyPressed) {
-    frenzyKeyPressed = false;
-    if (player.frenzyKills >= 12 && player.frenzyTimer <= 0) {
+    const devMode = frenzyKeyDev;
+    frenzyKeyPressed = false; frenzyKeyDev = false;
+    if ((devMode || player.frenzyKills >= 12) && player.frenzyTimer <= 0) {
       player.frenzyKills = 0;
       player.frenzyTimer = 900;
       player.homingUsed = false;
@@ -2662,9 +2663,12 @@ document.addEventListener('keydown', e => {
   if ((e.code === 'KeyR' || e.code === 'Enter') && dead) { location.reload(); return; }
 });
 
-let frenzyKeyPressed = false;
+let frenzyKeyPressed = false, frenzyKeyDev = false;
 document.addEventListener('keydown', e => {
-  if ((e.code === 'KeyR' || e.code === 'KeyQ') && !dead) frenzyKeyPressed = true;
+  if ((e.code === 'KeyR' || e.code === 'KeyQ') && !dead) {
+    frenzyKeyPressed = true;
+    frenzyKeyDev = e.code === 'KeyQ';
+  }
 });
 
 // ── Drawing ───────────────────────────────────────────────────────────────────
