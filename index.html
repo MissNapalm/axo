@@ -2323,7 +2323,7 @@ function update(dt) {
         player.dashFrames = 0;
         player.onGround = false;
       } else if (player.spinning || (!g.flying && player.vy > 0 && player.y + player.h < g.y + g.h / 2 + 10)) {
-        damageEnemy(g, g.hp); // instant kill on stomp/spin
+        damageEnemy(g, 1); // stomp deals 1 hit like everything else
         player.vy = Math.min(player.vy, -6);
       } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
         hp--;
