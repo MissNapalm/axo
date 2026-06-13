@@ -481,7 +481,7 @@ const player = {
   homing: false,
   homingTarget: null,
   homingUsed: false,
-  frenzyTimer: 0,   // frames remaining on frenzy power-up (480 = 8s)
+  frenzyTimer: 0,   // frames remaining on frenzy power-up (900 = 15s)
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
@@ -2273,7 +2273,7 @@ function update(dt) {
     pb.bobTimer += 0.05;
     if (rectsOverlap({ x: pb.x, y: pb.y, w: pb.w, h: pb.h }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       pb.collected = true;
-      player.frenzyTimer = 480;
+      player.frenzyTimer = 900;
       player.homingUsed = false;
       spawnExplosion(pb.x + pb.w / 2, pb.y + pb.h / 2, true);
     }
@@ -2343,8 +2343,7 @@ function update(dt) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
     if (rectsOverlap(gr, pr)) {
       if (player.dashFrames > 0 && !g.hitFlash) {
-        damageEnemy(g, 1);
-        g.hitFlash = Math.max(g.hitFlash, 20);
+        damageEnemy(g, g.hp); // dash insta-kills
         // Bounce player back opposite dash direction
         player.vx = -Math.sign(player.vx) * 8;
         player.vy = -6;
@@ -2354,9 +2353,7 @@ function update(dt) {
         damageEnemy(g, 1); // stomp deals 1 hit like everything else
         player.vy = Math.min(player.vy, -6);
       } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
-        hp--;
-        updateHPBar();
-        player.invincible = 80;
+        hurtPlayer(1); player.invincible = 80;
         playSound('hurt', 0.6);
         if (hp <= 0) { killPlayer(); return; }
       }
@@ -3237,7 +3234,7 @@ function loop(ts) {
 
   // Frenzy bar
   if (player.frenzyTimer > 0) {
-    const frac = player.frenzyTimer / 480;
+    const frac = player.frenzyTimer / 900;
     const bw = 120, bh = 8, bx = W / 2 - bw / 2, by = H - 22;
     const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 80);
     ctx.save();
