@@ -201,7 +201,8 @@ const DEFAULTS = {
   jump1: 6.4,
   dashH: 26,
   dashV: 14,
-  dashLen: 14,
+  dashLen: 10,
+  dashLenFrenzy: 14,
   moveSpeed: 3.5,
   axoSize: 44,
   enemySize: 32,
@@ -2110,7 +2111,7 @@ function update(dt) {
         player.vy = -diagV;
         player.dashUsedUp = true;
         player.dashUsedH  = true;
-        player.dashFrames = CFG.dashLen;
+        player.dashFrames = player.frenzyTimer > 0 ? CFG.dashLenFrenzy : CFG.dashLen;
         player.ballForm = true;
         player.spinning = false;
       }
@@ -2118,7 +2119,7 @@ function update(dt) {
       player.vx = 0;
       player.vy = -CFG.dashV;
       player.dashUsedUp = true;
-      player.dashFrames = CFG.dashLen;
+      player.dashFrames = player.frenzyTimer > 0 ? CFG.dashLenFrenzy : CFG.dashLen;
       player.dashingUp = true;
       player.ballForm = true;
       player.spinning = false;
@@ -2126,7 +2127,7 @@ function update(dt) {
       player.vx = horizDir * CFG.dashH;
       player.vy = 0;
       player.dashUsedH = true;
-      player.dashFrames = CFG.dashLen;
+      player.dashFrames = player.frenzyTimer > 0 ? CFG.dashLenFrenzy : CFG.dashLen;
       player.ballForm = true;
       player.spinning = false;
     }
@@ -3016,6 +3017,11 @@ function drawPlayer() {
   if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
   const sx = player.x - camera;
   ctx.save();
+  // Frenzy: periodic white flash every ~40 frames
+  if (player.frenzyTimer > 0) {
+    const flash = Math.max(0, Math.sin(Date.now() / 130) * 3.5);
+    if (flash > 0) ctx.filter = `brightness(${(1 + flash).toFixed(2)}) saturate(0.2)`;
+  }
   const dh = player.h * 1.0;
   const footOffset = CFG.spriteOffset;
 
