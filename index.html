@@ -579,6 +579,20 @@ const tut = {
   anyKeyTimer: 0,
 };
 
+// ── Level complete cinematic ─────────────────────────────────────────────────
+const lvlComplete = {
+  active: false,
+  timer: 0,       // counts up in frames
+  zoomStart: 1,   // zoom at start of cinematic
+  camXStart: 0,
+};
+const LVC_FADE_IN   = 60;   // 0–60: black fades in
+const LVC_ZOOM      = 90;   // 60–150: camera zooms in on player
+const LVC_TEXT      = 50;   // 150–200: "LEVEL COMPLETE" fades in
+const LVC_HOLD      = 60;   // 200–260: hold
+const LVC_RUN       = 80;   // 260–340: player runs off right
+const LVC_TOTAL     = LVC_FADE_IN + LVC_ZOOM + LVC_TEXT + LVC_HOLD + LVC_RUN;
+
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
 let comboCount = 0, comboTimer = 0;
@@ -773,6 +787,7 @@ function loadLevel(n) {
   comboCount = 0; comboTimer = 0;
   won = false; dead = false;
   score = 0; coinCount = 0;
+  lvlComplete.active = false; lvlComplete.timer = 0;
 
   const sel = document.getElementById('level-btn');
   if (sel) sel.value = currentLevel;
@@ -2472,6 +2487,31 @@ function update(dt) {
   const eJustPressed = eKey && !prevEKey;
   prevEKey = eKey;
 
+  if (lvlComplete.active) {
+    lvlComplete.timer++;
+    const t = lvlComplete.timer;
+    if (t < LVC_FADE_IN) {
+      // freeze player in place
+      player.vx = 0; player.vy = 0;
+    } else if (t < LVC_FADE_IN + LVC_ZOOM) {
+      // zoom in — camera already handled in draw
+      player.vx = 0; player.vy = 0;
+    } else if (t < LVC_FADE_IN + LVC_ZOOM + LVC_TEXT + LVC_HOLD) {
+      player.vx = 0; player.vy = 0;
+    } else {
+      // run off right
+      player.vx = CFG.moveSpeed * 1.4;
+      player.dir = 1;
+      player.x += player.vx;
+    }
+    if (t >= LVC_TOTAL) {
+      lvlComplete.active = false;
+      zoom = lvlComplete.zoomStart;
+      won = true; player.wonSlide = true;
+    }
+    return;
+  }
+
   if (player.wonSlide) {
     player.vy = 2.5; player.vx = 0;
     player.y += player.vy;
@@ -2867,8 +2907,12 @@ function update(dt) {
         player.x = 2 * TILE; player.y = groundY * TILE - player.h;
         player.vx = 0; player.vy = 0; camera = 0;
       } else {
-        won = true; player.wonSlide = true;
-        player.x = FLAG_X * TILE - player.w + 6; player.vx = 0;
+        lvlComplete.active = true;
+        lvlComplete.timer = 0;
+        lvlComplete.zoomStart = zoom;
+        lvlComplete.camXStart = camera;
+        player.vx = 0; player.vy = 0;
+        player.x = FLAG_X * TILE - player.w + 6;
         score += 1000; updateHUD();
       }
     }
@@ -3949,6 +3993,41 @@ function loop(ts) {
       ctx.fillText(TUT_STEPS[TUT_STEPS.length - 1].msg, W / 2, H / 2);
       ctx.restore();
     }
+  }
+
+  // Level complete cinematic overlay
+  if (lvlComplete.active) {
+    const t = lvlComplete.timer;
+    const fadeT   = Math.min(t / LVC_FADE_IN, 1);
+    const zoomT   = Math.max(0, Math.min((t - LVC_FADE_IN) / LVC_ZOOM, 1));
+    const textT   = Math.max(0, Math.min((t - LVC_FADE_IN - LVC_ZOOM) / LVC_TEXT, 1));
+
+    // Apply cinematic zoom — ease-in-out toward 2.2×
+    const targetZoom = lvlComplete.zoomStart + (2.2 - lvlComplete.zoomStart) * (zoomT * zoomT * (3 - 2 * zoomT));
+    zoom = targetZoom;
+
+    // Black fade — darkens quickly
+    ctx.save();
+    ctx.fillStyle = `rgba(0,0,0,${fadeT * 0.88})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // "LEVEL COMPLETE" text
+    if (textT > 0) {
+      const bounce = Math.sin(textT * Math.PI) * 12 * (1 - textT * 0.4);
+      ctx.globalAlpha = textT;
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 48px monospace';
+      ctx.shadowColor = '#ffcc00';
+      ctx.shadowBlur = 24;
+      ctx.fillStyle = '#ffe566';
+      ctx.fillText('LEVEL COMPLETE', W / 2, H / 2 - 10 - bounce);
+      ctx.shadowBlur = 0;
+      ctx.font = '20px monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillText('Score: ' + String(score).padStart(6, '0'), W / 2, H / 2 + 36);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
   }
 
   // Screen-space overlays
