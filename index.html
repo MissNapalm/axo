@@ -612,8 +612,8 @@ const player = {
   ballForm: false,
   ballExitFlash: 0,   // counts down from BALL_EXIT_FLASH_FRAMES on exit
   dashingUp: false,
-  dashUsedUp: false,
-  dashUsedH: false,
+  dashUsedUp: 0,
+  dashUsedH: 0,
   dashFrames: 0,    // frames remaining in active dash
   invincible: 0,
   dir: 1,
@@ -750,7 +750,7 @@ function loadLevel(n) {
     homing: false, homingTarget: null, homingUsed: false, homingCount: 0,
     frenzyTimer: 0, frenzyKills: 0, coinFrenzyAcc: 0,
     ballForm: false, ballExitFlash: 0, spinning: false,
-    dashFrames: 0, dashUsedH: false, dashUsedV: false,
+    dashFrames: 0, dashUsedH: 0, dashUsedV: 0,
     invincible: 0, dead: false, wonSlide: false,
     dir: 1,
   });
@@ -2248,8 +2248,9 @@ function update(dt) {
     const wantH = goLeft || goRight || (!goingUp);
     const wantUp = goingUp;
     const frenzy = player.frenzyTimer > 0;
-    const canUp = wantUp && !player.dashUsedUp;
-    const canH  = wantH  && !player.dashUsedH;
+    const maxDash = frenzy ? 2 : 1;
+    const canUp = wantUp && player.dashUsedUp < maxDash;
+    const canH  = wantH  && player.dashUsedH  < maxDash;
 
     if (wantUp && wantH && (canUp || canH)) {
       // diagonal — only allowed if both directions still available
@@ -2259,8 +2260,8 @@ function update(dt) {
         const diagV = CFG.dashV * 0.707 * spd;
         player.vx = horizDir * diagH;
         player.vy = -diagV;
-        player.dashUsedUp = true;
-        player.dashUsedH  = true;
+        player.dashUsedUp++;
+        player.dashUsedH++;
         player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
         player.ballForm = true;
         player.spinning = false;
@@ -2268,7 +2269,7 @@ function update(dt) {
     } else if (wantUp && canUp) {
       player.vx = 0;
       player.vy = -(CFG.dashV * (frenzy ? 1 : 0.5));
-      player.dashUsedUp = true;
+      player.dashUsedUp++;
       player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
       player.dashingUp = true;
       player.ballForm = true;
@@ -2276,7 +2277,7 @@ function update(dt) {
     } else if (canH) {
       player.vx = horizDir * CFG.dashH * (frenzy ? 1 : 0.5);
       player.vy = 0;
-      player.dashUsedH = true;
+      player.dashUsedH++;
       player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
       player.ballForm = true;
       player.spinning = false;
@@ -2401,7 +2402,7 @@ function update(dt) {
           }
           player.onGround = true;
           player.homingUsed = false; player.homingCount = 0;
-          player.dashUsedUp = false; player.dashUsedH = false;
+          player.dashUsedUp = 0; player.dashUsedH = 0;
         } else if (player.vy < 0) {
           player.y = s.y + s.h;
           player.vy = 1;
