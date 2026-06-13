@@ -2102,35 +2102,37 @@ function update(dt) {
     const horizDir = goLeft ? -1 : goRight ? 1 : player.dir;
     const wantH = goLeft || goRight || (!goingUp);
     const wantUp = goingUp;
-    const canUp = wantUp && !player.dashUsedUp;
-    const canH  = wantH  && !player.dashUsedH;
+    const frenzy = player.frenzyTimer > 0;
+    const canUp = wantUp && (frenzy || !player.dashUsedUp);
+    const canH  = wantH  && (frenzy || !player.dashUsedH);
 
     if (wantUp && wantH && (canUp || canH)) {
       // diagonal — only allowed if both directions still available
       if (canUp && canH) {
-        const diagH = CFG.dashH * 0.707;
-        const diagV = CFG.dashV * 0.707;
+        const spd = frenzy ? 1 : 0.5;
+        const diagH = CFG.dashH * 0.707 * spd;
+        const diagV = CFG.dashV * 0.707 * spd;
         player.vx = horizDir * diagH;
         player.vy = -diagV;
         player.dashUsedUp = true;
         player.dashUsedH  = true;
-        player.dashFrames = player.frenzyTimer > 0 ? CFG.dashLenFrenzy : CFG.dashLen;
+        player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
         player.ballForm = true;
         player.spinning = false;
       }
     } else if (wantUp && canUp) {
       player.vx = 0;
-      player.vy = -CFG.dashV;
+      player.vy = -(CFG.dashV * (frenzy ? 1 : 0.5));
       player.dashUsedUp = true;
-      player.dashFrames = player.frenzyTimer > 0 ? CFG.dashLenFrenzy : CFG.dashLen;
+      player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
       player.dashingUp = true;
       player.ballForm = true;
       player.spinning = false;
     } else if (canH) {
-      player.vx = horizDir * CFG.dashH;
+      player.vx = horizDir * CFG.dashH * (frenzy ? 1 : 0.5);
       player.vy = 0;
       player.dashUsedH = true;
-      player.dashFrames = player.frenzyTimer > 0 ? CFG.dashLenFrenzy : CFG.dashLen;
+      player.dashFrames = frenzy ? CFG.dashLenFrenzy : CFG.dashLen;
       player.ballForm = true;
       player.spinning = false;
     }
@@ -2267,8 +2269,21 @@ function update(dt) {
     }
   }
 
-  // Frenzy tick
-  if (player.frenzyTimer > 0) player.frenzyTimer--;
+  // Frenzy tick + trail
+  if (player.frenzyTimer > 0) {
+    player.frenzyTimer--;
+    // Spawn cyan trail every frame
+    trailParticles.push({
+      x: player.x + player.w / 2 + (Math.random() - 0.5) * 10,
+      y: player.y + player.h / 2 + (Math.random() - 0.5) * 10,
+      r: Math.random() * 7 + 4,
+      life: 18 + Math.floor(Math.random() * 8),
+      maxLife: 26,
+      hue: 185 + Math.random() * 30,
+      bright: true,
+      frenzyTrail: true,
+    });
+  }
 
   // Heart pickups
   const groundFloor = (groundY - 1) * TILE;
@@ -3069,6 +3084,31 @@ function drawPlayer() {
     }
     ctx.filter = 'none';
   }
+
+  // Frenzy pulse ring (drawn in screen space, independent of transform)
+  if (player.frenzyTimer > 0) {
+    const pcx = player.x + player.w / 2 - camera;
+    const pcy = player.y + player.h / 2;
+    const t = Date.now() / 300;
+    const pulseR = player.w * 0.9 + Math.sin(t) * 8;
+    const alpha = 0.35 + 0.25 * Math.abs(Math.sin(t));
+    ctx.save();
+    ctx.strokeStyle = `rgba(80,220,255,${alpha})`;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#50dcff';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(pcx, pcy, pulseR, 0, Math.PI * 2);
+    ctx.stroke();
+    // second ring offset
+    const pulseR2 = pulseR + 10 + Math.sin(t + 1) * 5;
+    ctx.globalAlpha = alpha * 0.4;
+    ctx.beginPath();
+    ctx.arc(pcx, pcy, pulseR2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   ctx.restore();
 }
 
