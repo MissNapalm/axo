@@ -738,9 +738,8 @@ function loadLevel(n) {
     return { id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
   });
   flyers = lv.flyers.map((f, i) => {
-    const isGunner = lvl >= 1 && i % 3 === 2;
-    const type = isGunner ? 'gunner' : (lvl >= 1 && i % 3 === 2) ? 'shocker' : 'normal';
-    const h = isGunner ? 2 : 3;
+    const type = 'normal';
+    const h = 3;
     // Minimum y = 5*TILE so bats stay in mid-height range
     let safeY = Math.max(f.fy, 5 * TILE);
     // Push down if spawning inside any platform
@@ -756,9 +755,7 @@ function loadLevel(n) {
         }
       }
     }
-    return { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0,
-      // Gunner state machine
-      gunState: 'idle', gunTimer: 90 + Math.floor(Math.random() * 60), laserAngle: 0 };
+    return { id: i + 1000, x: f.x * TILE, baseY: safeY, y: safeY, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
   });
   heartPickups = [];
   projectiles  = [];
@@ -2613,14 +2610,8 @@ function update(dt) {
       const dx = tx - px, dy = ty - py;
       const dist = Math.hypot(dx, dy);
       if (dist < 12) {
-        const homingVulnerable = tg.type !== 'gunner' || tg.gunState === 'charge' || tg.gunState === 'fire';
-        if (homingVulnerable) {
-          const killed = damageEnemy(tg, 1);
-          if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
-        } else {
-          // Bounce off invulnerable gunner
-          player.vx = -player.vx * 1.2; player.vy = -8;
-        }
+        const killed = damageEnemy(tg, 1);
+        if (killed) { comboCount++; comboTimer = 120; player.homingUsed = false; player.homingCount = Math.max(0, player.homingCount - 1); }
         player.homing = false; player.homingTarget = null;
         player.ballForm = true;
         player.vy = Math.min(player.vy, -CFG.jump1 * 0.5);
@@ -2834,28 +2825,7 @@ function update(dt) {
       g.y = g.baseY + Math.sin(g.wobble) * 18;
     }
 
-    // ── Gunner state machine ────────────────────────────────────────────────
-    if (g.type === 'gunner') {
-      g.gunTimer--;
-      const gdx = (player.x + player.w / 2) - (g.x + g.w / 2);
-      const gdy = (player.y + player.h / 2) - (g.y + g.h / 2);
-      if (g.gunState === 'idle') {
-        if (g.gunTimer <= 0) { g.gunState = 'charge'; g.gunTimer = 90; } // 1.5s charge
-      } else if (g.gunState === 'charge') {
-        // Track player angle during charge
-        g.laserAngle = Math.atan2(gdy, gdx);
-        if (g.gunTimer <= 0) { g.gunState = 'fire'; g.gunTimer = 6; }
-      } else if (g.gunState === 'fire') {
-        if (g.gunTimer <= 0) {
-          // Fire fast bullet along locked angle
-          const spd = 11;
-          projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2,
-            vx: Math.cos(g.laserAngle) * spd, vy: Math.sin(g.laserAngle) * spd,
-            life: 80, flying: true, laser: true });
-          g.gunState = 'idle'; g.gunTimer = 150 + Math.floor(Math.random() * 90);
-        }
-      }
-    } else {
+    {
       // Shocker shoot logic — flying enemies only
       if (g.flying) {
         if (!g.shootCooldown) g.shootCooldown = 180 + Math.floor(Math.random() * 120);
@@ -2879,9 +2849,8 @@ function update(dt) {
     if (g.hitFlash > 0) g.hitFlash--;
     const gr = { x: g.x + 2, y: g.y + 2, w: g.w - 4, h: g.h - 4 };
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
-    const gunnerVulnerable = g.type !== 'gunner' || g.gunState === 'charge' || g.gunState === 'fire';
     if (rectsOverlap(gr, pr)) {
-      if (player.dashFrames > 0 && !g.hitFlash && gunnerVulnerable) {
+      if (player.dashFrames > 0 && !g.hitFlash) {
         if (!g.flying && player.frenzyTimer <= 0) {
           // Normal mode: dash into ground enemy hurts player, bounces back, goomba unharmed
           hurtPlayer(1); player.invincible = 60;
@@ -2899,21 +2868,15 @@ function update(dt) {
           player.dashFrames = 0;
           player.onGround = false;
         }
-      } else if ((player.spinning || (!g.flying && player.vy > 0 && player.y + player.h < g.y + g.h / 2 + 10)) && gunnerVulnerable) {
+      } else if (player.spinning || (!g.flying && player.vy > 0 && player.y + player.h < g.y + g.h / 2 + 10)) {
         damageEnemy(g, 1);
         player.vy = Math.min(player.vy, -6);
-      } else if (player.homing && gunnerVulnerable) {
+      } else if (player.homing) {
         // homing handled separately
       } else if (!player.homing && !player.ballForm && !player.dashFrames && player.invincible === 0) {
-        if (!gunnerVulnerable) {
-          // Bounce player off invulnerable gunner
-          player.vx = (player.x < g.x + g.w / 2 ? -1 : 1) * 9;
-          player.vy = -7; player.invincible = 20;
-        } else {
-          hurtPlayer(1); player.invincible = 80;
-          playSound('hurt', 0.6);
-          if (hp <= 0) { killPlayer(); return; }
-        }
+        hurtPlayer(1); player.invincible = 80;
+        playSound('hurt', 0.6);
+        if (hp <= 0) { killPlayer(); return; }
       }
     }
   }
@@ -2926,7 +2889,7 @@ function update(dt) {
     if (rectsOverlap({ x: p.x - 5, y: p.y - 5, w: 10, h: 10 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
       projectiles.splice(i, 1);
       if (player.invincible === 0) {
-        hurtPlayer(p.laser ? 2 : 1); // laser shots deal 2 damage
+        hurtPlayer(1);
         // Knockback away from projectile direction
         player.vx = (p.vx > 0 ? 1 : -1) * 9;
         player.vy = -7;
@@ -3508,50 +3471,6 @@ function drawEnemy(g) {
   const toughTint = g.flying && g.maxHp >= 3;
 
   if (g.flying) {
-    // ── Gunner ───────────────────────────────────────────────────────────────
-    if (g.type === 'gunner') {
-      const isRed = g.gunState === 'charge' || g.gunState === 'fire';
-      const chargeT = g.gunState === 'charge' ? 1 - g.gunTimer / 90 : 1;
-      ctx.save();
-      // Body — metallic orb, glows red when vulnerable
-      const bodyColor = isRed ? `rgba(220,30,30,${0.7 + 0.3 * Math.sin(t * 8)})` : '#334455';
-      ctx.shadowColor = isRed ? '#ff2200' : '#225588';
-      ctx.shadowBlur = isRed ? 18 + Math.sin(t * 6) * 8 : 6;
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill();
-      // Shine
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = isRed ? 'rgba(255,120,80,0.5)' : 'rgba(100,180,255,0.4)';
-      ctx.beginPath(); ctx.arc(cx - 4, cy - 5, 6, 0, Math.PI * 2); ctx.fill();
-      // Central eye
-      ctx.fillStyle = isRed ? '#ffcc00' : '#88ccff';
-      ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#000';
-      ctx.beginPath(); ctx.arc(cx + 2, cy, 3, 0, Math.PI * 2); ctx.fill();
-      // Laser sight beam during charge
-      if (g.gunState === 'charge') {
-        const laserLen = 200 * chargeT;
-        ctx.save();
-        ctx.globalAlpha = 0.15 + 0.35 * chargeT;
-        ctx.strokeStyle = '#ff4400';
-        ctx.lineWidth = 2 + chargeT * 3;
-        ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(g.laserAngle) * laserLen, cy + Math.sin(g.laserAngle) * laserLen);
-        ctx.stroke();
-        // Dot at target end
-        ctx.globalAlpha = 0.6 * chargeT;
-        ctx.fillStyle = '#ff4400';
-        ctx.beginPath();
-        ctx.arc(cx + Math.cos(g.laserAngle) * laserLen, cy + Math.sin(g.laserAngle) * laserLen, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-      ctx.restore();
-      return; // skip bat draw
-    }
-
     // Bat — black with red eyes
     const wingSpan = 30 + Math.sin(t * 3 + g.wobble) * 10;
     const flapOff = Math.abs(Math.sin(t * 3 + g.wobble)) * 14;
@@ -3842,36 +3761,14 @@ function drawParticlesAll() {
   // Enemy projectiles
   for (const p of projectiles) {
     const sx = p.x - camera;
-    if (p.laser) {
-      // Laser bullet — fast bright orange streak
-      ctx.save();
-      ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 12;
-      ctx.globalAlpha = 0.4;
-      ctx.fillStyle = '#ff6600';
-      ctx.beginPath(); ctx.arc(sx, p.y, 10, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#ffcc00';
-      ctx.beginPath(); ctx.arc(sx, p.y, 5, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(sx, p.y, 2, 0, Math.PI*2); ctx.fill();
-      // Trailing streak
-      ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = '#ff4400'; ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(sx, p.y);
-      ctx.lineTo(sx - p.vx * 3, p.y - p.vy * 3);
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      ctx.globalAlpha = 0.35;
-      ctx.fillStyle = p.flying ? '#203058' : '#c02020';
-      ctx.beginPath(); ctx.arc(sx, p.y, 9, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = p.flying ? '#4080d8' : '#e84040';
-      ctx.beginPath(); ctx.arc(sx, p.y, 5, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(sx - 1.5, p.y - 1.5, 2, 0, Math.PI*2); ctx.fill();
-    }
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = p.flying ? '#203058' : '#c02020';
+    ctx.beginPath(); ctx.arc(sx, p.y, 9, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = p.flying ? '#4080d8' : '#e84040';
+    ctx.beginPath(); ctx.arc(sx, p.y, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(sx - 1.5, p.y - 1.5, 2, 0, Math.PI*2); ctx.fill();
   }
 }
 
