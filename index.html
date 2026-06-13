@@ -2402,6 +2402,14 @@ function update(dt) {
     }
   }
 
+  // Break blocks touched during homing or dashing (without stopping movement)
+  if (player.homing || player.dashFrames > 0) {
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    for (const s of getSolidsNear(player.x, player.y, player.w, player.h)) {
+      if (s.key && rectsOverlap(pr, s)) hitBlock(s);
+    }
+  }
+
   // Pit death — frenzy wraps to ceiling instead
   if (player.y > H + 200) {
     if (player.frenzyTimer > 0) {
