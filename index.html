@@ -731,15 +731,9 @@ function damageEnemy(g, dmg) {
     if (Math.random() < 0.28) {
       heartPickups.push({ x: g.x + g.w / 2 - 10, y: g.y, vx: (Math.random() - 0.5) * 3, vy: -5, collected: false, bobTimer: 0 });
     }
-    // Frenzy kill counter
+    // Frenzy kill counter — fills meter, R to activate
     if (player.frenzyTimer <= 0) {
-      player.frenzyKills++;
-      if (player.frenzyKills >= 7) {
-        player.frenzyKills = 0;
-        player.frenzyTimer = 900;
-        player.homingUsed = false;
-        spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
-      }
+      player.frenzyKills = Math.min(player.frenzyKills + 1, 7);
     }
     return true; // killed
   }
@@ -2456,11 +2450,11 @@ function killPlayer() {
 }
 
 document.getElementById('go-restart').addEventListener('click', () => location.reload());
-document.addEventListener('keydown', e => { if ((e.code === 'KeyR' || e.code === 'Enter') && dead) location.reload(); });
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyQ' && !dead && !won) {
-    player.frenzyTimer = 900;
+  if ((e.code === 'KeyR' || e.code === 'Enter') && dead) { location.reload(); return; }
+  if (e.code === 'KeyR' && !dead && !won && player.frenzyKills >= 7 && player.frenzyTimer <= 0) {
     player.frenzyKills = 0;
+    player.frenzyTimer = 900;
     player.homingUsed = false;
     spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
   }
@@ -3308,17 +3302,19 @@ function loop(ts) {
       ctx.textAlign = 'center';
       ctx.fillText('FRENZY', W / 2, by - 3);
     } else {
-      // Building: show kill progress toward 10
+      // Building: show kill progress toward 7
       const frac = player.frenzyKills / 7;
-      ctx.fillStyle = 'rgba(255,180,40,0.8)';
+      const ready = player.frenzyKills >= 7;
+      const readyPulse = ready ? (0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 180))) : 0.8;
+      ctx.fillStyle = ready ? `rgba(255,220,40,${readyPulse})` : 'rgba(255,180,40,0.8)';
       ctx.fillRect(bx, by, bw * frac, bh);
-      ctx.strokeStyle = 'rgba(255,180,40,0.6)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = ready ? `rgba(255,220,40,${readyPulse})` : 'rgba(255,180,40,0.6)';
+      ctx.lineWidth = ready ? 2 : 1;
       ctx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
-      ctx.font = 'bold 9px monospace';
-      ctx.fillStyle = '#ffb428';
+      ctx.font = `bold 9px monospace`;
+      ctx.fillStyle = ready ? `rgba(255,240,80,${readyPulse})` : '#ffb428';
       ctx.textAlign = 'center';
-      ctx.fillText(`KILLS ${player.frenzyKills}/7`, W / 2, by - 3);
+      ctx.fillText(ready ? 'FRENZY READY — R' : `KILLS ${player.frenzyKills}/7`, W / 2, by - 3);
     }
     ctx.restore();
   }
