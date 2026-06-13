@@ -663,7 +663,7 @@ function loadLevel(n) {
   // Every 3rd enemy in level 2+ is a 'shocker'
   const lvl = n; // 0-indexed
   goombas = lv.goombas.map((g, i) => {
-    const type = (lvl >= 1 && i % 3 === 1) ? 'shocker' : 'normal';
+    const type = 'normal';
     const h = 2; // goombas always 2 hits
     return { id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false, hp: h, maxHp: h, hitFlash: 0, type, shockStun: 0 };
   });
