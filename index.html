@@ -812,7 +812,9 @@ function update(dt) {
         const spd = g.flying ? 4.5 : 3.5;
         projectiles.push({ x: g.x + g.w/2, y: g.y + g.h/2, vx: (dx/dist)*spd, vy: (dy/dist)*spd, life: 120, flying: g.flying });
       }
-      g.shootCooldown = 120 + Math.floor(Math.random() * 80);
+      g.shootCooldown = g.flying
+        ? 45 + Math.floor(Math.random() * 30)
+        : 120 + Math.floor(Math.random() * 80);
     }
 
     if (g.hitFlash > 0) g.hitFlash--;
