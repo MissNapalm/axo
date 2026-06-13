@@ -2412,6 +2412,7 @@ function update(dt) {
       player.frenzyTimer = 900;
       player.homingUsed = false;
       turboFlash = 70;
+      hp = MAX_HP; updateHPBar();
       spawnExplosion(player.x + player.w / 2, player.y + player.h / 2, true);
     }
   }
