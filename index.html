@@ -162,8 +162,8 @@ const COLORS = {
   pole:    '#445566',
 };
 
-// ── Sonic-style level (600 tiles wide) ───────────────────────────────────────
-const LEVEL_W_TILES = 620;
+// ── Sonic-style level (1200 tiles wide) ──────────────────────────────────────
+const LEVEL_W_TILES = 1200;
 const groundY = 12;
 
 // Gaps: array of {x, w} in tiles
@@ -176,6 +176,15 @@ const GROUND_GAPS = [
   { x:460, w:6 },
   { x:530, w:7 },
   { x:580, w:5 },
+  // second half
+  { x:650, w:6 },
+  { x:720, w:8 },
+  { x:800, w:7 },
+  { x:870, w:10 },
+  { x:940, w:6 },
+  { x:1010,w:8 },
+  { x:1080,w:7 },
+  { x:1140,w:6 },
 ];
 
 function groundInGap(tx) {
@@ -209,6 +218,29 @@ const platforms = [
   { x:566, y:8,  w:5, t:'brick'  },
   { x:590, y:6,  w:6, t:'qblock' },
   { x:606, y:3,  w:6, t:'brick'  },
+  // second half
+  { x:630, y:8,  w:5, t:'qblock' },
+  { x:660, y:5,  w:6, t:'brick'  },
+  { x:680, y:2,  w:7, t:'qblock' },
+  { x:710, y:7,  w:5, t:'brick'  },
+  { x:740, y:4,  w:8, t:'qblock' },
+  { x:762, y:9,  w:5, t:'brick'  },
+  { x:790, y:5,  w:6, t:'qblock' },
+  { x:818, y:3,  w:7, t:'brick'  },
+  { x:840, y:7,  w:6, t:'qblock' },
+  { x:862, y:4,  w:5, t:'brick'  },
+  { x:890, y:2,  w:8, t:'qblock' },
+  { x:920, y:6,  w:6, t:'brick'  },
+  { x:950, y:9,  w:5, t:'qblock' },
+  { x:976, y:4,  w:7, t:'brick'  },
+  { x:1000,y:6,  w:6, t:'qblock' },
+  { x:1020,y:3,  w:8, t:'brick'  },
+  { x:1050,y:8,  w:5, t:'qblock' },
+  { x:1070,y:5,  w:6, t:'brick'  },
+  { x:1100,y:2,  w:7, t:'qblock' },
+  { x:1130,y:7,  w:5, t:'brick'  },
+  { x:1155,y:4,  w:8, t:'qblock' },
+  { x:1175,y:6,  w:6, t:'brick'  },
 ];
 
 // Pipes
@@ -218,6 +250,11 @@ const pipes = [
   { x:270, h:4 }, { x:310, h:3 }, { x:360, h:2 },
   { x:420, h:3 }, { x:470, h:4 }, { x:520, h:2 },
   { x:560, h:3 }, { x:600, h:2 },
+  // second half
+  { x:640, h:3 }, { x:695, h:4 }, { x:750, h:2 },
+  { x:810, h:3 }, { x:855, h:4 }, { x:910, h:2 },
+  { x:960, h:3 }, { x:1015,h:4 }, { x:1060,h:2 },
+  { x:1110,h:3 }, { x:1160,h:2 },
 ];
 
 // Coins — dense Sonic-style arcs and lines
@@ -247,6 +284,15 @@ coinArc(430, 5, 5, 7);
 coinLine(468, 496, 5);
 coinLine(540, 562, 5);
 coinLine(575, 600, 6);
+// second half coins
+coinLine(620, 648, 8); coinArc(665, 6, 5, 7);
+coinLine(685, 712, 5); coinArc(730, 7, 4, 6);
+coinLine(748, 780, 4); coinLine(795, 820, 6);
+coinArc(840, 5, 5, 7); coinLine(858, 890, 4);
+coinLine(908, 940, 5); coinArc(960, 6, 4, 6);
+coinLine(978, 1010, 5); coinLine(1025, 1055, 4);
+coinArc(1075, 5, 5, 7); coinLine(1090, 1130, 6);
+coinLine(1145, 1180, 5);
 
 // Goombas — one or two per section
 const goombaDefs = [
@@ -267,6 +313,22 @@ const goombaDefs = [
   { x:544, pl:536, pr:558 }, { x:556, pl:548, pr:568 },
   { x:572, pl:564, pr:586 },
   { x:596, pl:588, pr:614 },
+  // second half
+  { x:625, pl:618, pr:638 }, { x:638, pl:630, pr:650 },
+  { x:662, pl:654, pr:676 },
+  { x:700, pl:692, pr:716 }, { x:714, pl:706, pr:726 },
+  { x:742, pl:734, pr:758 },
+  { x:780, pl:772, pr:796 }, { x:794, pl:786, pr:808 },
+  { x:822, pl:814, pr:838 },
+  { x:858, pl:850, pr:874 }, { x:872, pl:864, pr:884 },
+  { x:900, pl:892, pr:916 },
+  { x:940, pl:932, pr:956 }, { x:954, pl:946, pr:966 },
+  { x:980, pl:972, pr:996 },
+  { x:1020,pl:1012,pr:1036}, { x:1034,pl:1026,pr:1046},
+  { x:1060,pl:1052,pr:1076},
+  { x:1100,pl:1092,pr:1116}, { x:1114,pl:1106,pr:1126},
+  { x:1145,pl:1137,pr:1161},
+  { x:1175,pl:1167,pr:1190},
 ];
 
 // Flyers — one or two per section at varied heights
@@ -286,9 +348,23 @@ const flyerDefs = [
   { x:528, fy:6*TILE, pw:7  },
   { x:566, fy:4*TILE, pw:8  }, { x:586, fy:6*TILE, pw:6  },
   { x:602, fy:5*TILE, pw:6  },
+  // second half
+  { x:635, fy:4*TILE, pw:7  }, { x:650, fy:6*TILE, pw:6  },
+  { x:680, fy:3*TILE, pw:8  },
+  { x:720, fy:5*TILE, pw:7  }, { x:740, fy:4*TILE, pw:6  },
+  { x:770, fy:6*TILE, pw:7  },
+  { x:808, fy:4*TILE, pw:8  }, { x:830, fy:3*TILE, pw:6  },
+  { x:860, fy:5*TILE, pw:7  },
+  { x:900, fy:4*TILE, pw:8  }, { x:920, fy:6*TILE, pw:6  },
+  { x:950, fy:5*TILE, pw:7  },
+  { x:990, fy:4*TILE, pw:8  }, { x:1010,fy:3*TILE, pw:6  },
+  { x:1040,fy:5*TILE, pw:7  },
+  { x:1080,fy:4*TILE, pw:8  }, { x:1100,fy:6*TILE, pw:6  },
+  { x:1130,fy:5*TILE, pw:7  },
+  { x:1162,fy:4*TILE, pw:8  }, { x:1180,fy:6*TILE, pw:6  },
 ];
 
-const FLAG_X = 610;
+const FLAG_X = 1190;
 
 // ── State ────────────────────────────────────────────────────────────────────
 let score = 0, coinCount = 0, dead = false, won = false;
@@ -320,6 +396,7 @@ let cameraY = 0;
 let coins   = coinDefs.map((c, i) => ({ id: i, x: c.x * TILE, y: c.y * TILE, collected: false, bobTimer: Math.random() * Math.PI * 2 }));
 let goombas = goombaDefs.map((g, i) => ({ id: i, x: g.x * TILE, y: groundY * TILE - TILE, vx: -1.4, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: g.pl * TILE, pr: g.pr * TILE, frame: 0, flying: false }));
 let flyers  = flyerDefs.map((f, i) => ({ id: i + 1000, x: f.x * TILE, baseY: f.fy, y: f.fy, vx: 1.2, w: TILE, h: TILE, dead: false, deadTimer: 0, pl: f.x * TILE, pr: (f.x + f.pw) * TILE, frame: 0, flying: true, wobble: Math.random() * Math.PI * 2 }));
+let heartPickups = [];   // { x, y, vy, bobTimer, collected }
 let blockHit = {};
 
 // ── Solids ────────────────────────────────────────────────────────────────────
@@ -423,6 +500,10 @@ function spawnDashTrail(x, y) {
   });
 }
 
+function spawnHeart(x, y) {
+  heartPickups.push({ x: x - 10, y, vy: -4, bobTimer: 0, collected: false });
+}
+
 function spawnExplosion(x, y, flying) {
   const hue = flying ? 280 : 140;
   for (let i = 0; i < 24; i++) {
@@ -515,18 +596,26 @@ function update(dt) {
       player.homing = true;
       player.homingTarget = target;
       player.homingUsed = true;
+      player.spinning = true;
       target.lockFlash = 10;
     }
   }
 
-  // F — directional dash (one per airtime)
+  // F — directional dash (one per airtime, supports diagonal)
   if (eJustPressed && !player.onGround && !player.homing && !player.dashUsed) {
     const goingUp = pressed(['ArrowUp', 'KeyW']);
-    if (goingUp) {
+    const horizDir = goLeft ? -1 : goRight ? 1 : player.dir;
+    if (goingUp && (goLeft || goRight)) {
+      // diagonal: normalize so total speed = dashH
+      const diagH = CFG.dashH * 0.707;
+      const diagV = CFG.dashV * 0.707;
+      player.vx = horizDir * diagH;
+      player.vy = -diagV;
+    } else if (goingUp) {
       player.vx = 0;
       player.vy = -CFG.dashV;
     } else {
-      player.vx = (goLeft ? -1 : goRight ? 1 : player.dir) * CFG.dashH;
+      player.vx = horizDir * CFG.dashH;
       player.vy = 0;
     }
     player.dashUsed = true;
@@ -556,6 +645,7 @@ function update(dt) {
         tg.dead = true; tg.deadTimer = 40;
         score += 200; updateHUD();
         spawnExplosion(tg.x + tg.w / 2, tg.y + tg.h / 2, tg.flying);
+        if (hp < MAX_HP && Math.random() < 0.3) spawnHeart(tg.x + tg.w / 2, tg.y);
         player.homing = false; player.homingTarget = null;
         player.vy = -CFG.jump1 * 0.85;
         player.vx = player.dir * CFG.moveSpeed * 0.5;
@@ -675,12 +765,26 @@ function update(dt) {
         g.dead = true; g.deadTimer = 40; player.vy = Math.min(player.vy, -6);
         score += 100; updateHUD();
         spawnExplosion(g.x + g.w / 2, g.y + g.h / 2, g.flying);
+        if (hp < MAX_HP && Math.random() < 0.3) spawnHeart(g.x + g.w / 2, g.y);
       } else if (!player.homing && player.invincible === 0) {
         hp--;
         updateHPBar();
         player.invincible = 80; // ~1.3s i-frames
         if (hp <= 0) { killPlayer(); return; }
       }
+    }
+  }
+
+  // Heart pickups
+  for (let i = heartPickups.length - 1; i >= 0; i--) {
+    const h = heartPickups[i];
+    if (h.collected) { heartPickups.splice(i, 1); continue; }
+    h.vy += 0.4; h.y += h.vy; h.bobTimer += 0.06;
+    if (h.vy > 0) h.vy *= 0.92; // float settle
+    if (rectsOverlap({ x: h.x, y: h.y, w: 20, h: 20 }, { x: player.x, y: player.y, w: player.w, h: player.h })) {
+      h.collected = true;
+      hp = Math.min(MAX_HP, hp + 1);
+      updateHPBar(); updateHUD();
     }
   }
 
@@ -691,12 +795,12 @@ function update(dt) {
     score += 1000; updateHUD();
   }
 
-  // Camera X
-  const targetCam = player.x - W / 3;
+  // Camera X — keep player horizontally centered at all zoom levels
+  const targetCam = player.x + player.w / 2 - W / 2;
   camera += (Math.min(Math.max(targetCam, 0), LEVEL_W_TILES * TILE - W) - camera) * CAM_EASE;
 
-  // Camera Y
-  const targetCamY = player.y - H / 2;
+  // Camera Y — keep player vertically centered at all zoom levels
+  const targetCamY = player.y + player.h / 2 - H / 2;
   cameraY += (Math.min(Math.max(targetCamY, groundY * TILE - H), 0) - cameraY) * CAM_EASE;
 
   updateHUD();
@@ -886,6 +990,30 @@ function drawCoins() {
     ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#aaffee';
     ctx.beginPath(); ctx.arc(sx - 1.5, sy - 1.5, 2, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawHearts() {
+  for (const h of heartPickups) {
+    if (h.collected) continue;
+    const sx = h.x - camera;
+    const sy = h.y + Math.sin(h.bobTimer) * 4;
+    const t = performance.now() / 400;
+    ctx.save();
+    ctx.globalAlpha = 0.9 + Math.sin(t * 3) * 0.1;
+    // draw a simple heart shape
+    const cx = sx + 10, cy = sy + 9, r = 7;
+    ctx.fillStyle = '#ff3a6e';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + r * 0.6);
+    ctx.bezierCurveTo(cx - r * 1.2, cy - r * 0.2, cx - r * 1.5, cy - r * 1.2, cx, cy - r * 0.4);
+    ctx.bezierCurveTo(cx + r * 1.5, cy - r * 1.2, cx + r * 1.2, cy - r * 0.2, cx, cy + r * 0.6);
+    ctx.fill();
+    // shine
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.ellipse(cx - 2, cy - 3, 2.5, 1.5, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 }
 
@@ -1126,12 +1254,10 @@ function loop(ts) {
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Zoom: scale around player screen position
-  const playerScreenX = player.x - camera;
-  const playerScreenY = player.y - cameraY;
-  ctx.translate(playerScreenX, playerScreenY);
+  // Zoom: scale around canvas center, then shift so player stays centered
+  ctx.translate(W / 2, H / 2);
   ctx.scale(zoom, zoom);
-  ctx.translate(-playerScreenX / zoom, -playerScreenY / zoom);
+  ctx.translate(-W / 2, -H / 2);
 
   ctx.save();
   ctx.translate(0, -cameraY);
@@ -1142,6 +1268,7 @@ function loop(ts) {
   drawGround();
   drawPlatforms();
   drawCoins();
+  drawHearts();
   drawGoombas();
   drawParticlesAll();
   if (!dead) drawPlayer();
