@@ -339,126 +339,67 @@ const LEVELS = [
       {x:53,fy:6*TILE,pw:4},{x:57,fy:7*TILE,pw:4},{x:61,fy:6*TILE,pw:4},
     ],
   },
-  // Level 1
+  // Level 1 — ~3× Mario 1-1 length (flag at tile 580)
   {
-    // Ground gaps — wide pits at each vertical climb zone
     gaps: [
-      {x:55,w:4},{x:110,w:5},                         // early warmup
-      {x:192,w:8},                                     // ZONE 1 pit
-      {x:290,w:5},{x:340,w:4},
-      {x:422,w:8},                                     // ZONE 2 pit
-      {x:530,w:4},{x:570,w:5},
-      {x:642,w:8},                                     // ZONE 3 pit
-      {x:750,w:4},{x:800,w:5},
-      {x:872,w:8},                                     // ZONE 4 pit
-      {x:980,w:5},
-      {x:1062,w:8},                                    // ZONE 5 pit
-      {x:1150,w:6},
+      {x:55,w:4},{x:110,w:5},   // warmup
+      {x:192,w:7},               // pit 1
+      {x:300,w:5},               // pit 2
+      {x:400,w:7},               // pit 3
+      {x:490,w:5},               // pit 4
+      {x:555,w:5},               // final stretch
     ],
     platforms: [
-      // ── Opening stretch (thinned) ─────────────────────────────────────────────
+      // Opening
       {x:5,y:9,w:5,t:'qblock'},{x:30,y:7,w:4,t:'brick'},
       {x:62,y:9,w:4,t:'qblock'},{x:88,y:6,w:5,t:'brick'},
-
-      // ── ZONE 1 — mid bridge ───────────────────────────────────────────────────
-      {x:133,y:6,w:5,t:'brick'},
-      {x:145,y:5,w:10,t:'qblock'},
-      {x:162,y:7,w:5,t:'qblock'},
-      {x:210,y:9,w:6,t:'brick'},{x:240,y:7,w:5,t:'qblock'},
-
-      // ── Mid stretch ──────────────────────────────────────────────────────────
-      {x:272,y:6,w:5,t:'brick'},{x:305,y:8,w:5,t:'qblock'},
-      {x:338,y:6,w:5,t:'brick'},{x:372,y:8,w:5,t:'qblock'},
-
-      // ── ZONE 2 — mid bridge ───────────────────────────────────────────────────
-      {x:396,y:5,w:5,t:'brick'},
-      {x:408,y:6,w:12,t:'qblock'},
-      {x:428,y:7,w:4,t:'qblock'},
-      {x:490,y:9,w:5,t:'brick'},{x:512,y:7,w:5,t:'qblock'},
-
-      // ── Mid stretch 2 ────────────────────────────────────────────────────────
-      {x:530,y:6,w:5,t:'brick'},{x:560,y:8,w:5,t:'qblock'},
-      {x:592,y:6,w:4,t:'brick'},{x:618,y:8,w:5,t:'qblock'},
-
-      // ── ZONE 3 — mid bridge ───────────────────────────────────────────────────
-      {x:641,y:5,w:5,t:'brick'},
-      {x:653,y:6,w:14,t:'qblock'},
-      {x:675,y:7,w:4,t:'qblock'},
-      {x:718,y:9,w:5,t:'qblock'},{x:742,y:7,w:5,t:'brick'},
-
-      // ── Mid stretch 3 ────────────────────────────────────────────────────────
-      {x:762,y:6,w:5,t:'brick'},{x:792,y:8,w:4,t:'qblock'},
-      {x:822,y:6,w:5,t:'brick'},{x:848,y:8,w:5,t:'qblock'},
-
-      // ── ZONE 4 — mid bridge ───────────────────────────────────────────────────
-      {x:868,y:5,w:5,t:'brick'},
-      {x:880,y:6,w:18,t:'qblock'},
-      {x:906,y:5,w:5,t:'brick'},
-      {x:944,y:9,w:5,t:'qblock'},{x:968,y:7,w:5,t:'brick'},
-
-      // ── Mid stretch 4 ────────────────────────────────────────────────────────
-      {x:990,y:6,w:5,t:'brick'},{x:1020,y:8,w:5,t:'qblock'},
-      {x:1048,y:6,w:4,t:'brick'},
-
-      // ── ZONE 5 — mid bridge ───────────────────────────────────────────────────
-      {x:1062,y:5,w:5,t:'brick'},
-      {x:1072,y:6,w:12,t:'qblock'},
-      {x:1092,y:7,w:4,t:'qblock'},
-      {x:1130,y:9,w:5,t:'qblock'},{x:1152,y:7,w:5,t:'brick'},
-
-      // ── Final approach ───────────────────────────────────────────────────────
-      {x:1168,y:7,w:5,t:'brick'},{x:1182,y:5,w:8,t:'brick'},
-
-      // ── Health blocks ────────────────────────────────────────────────────────
-      {x:60,y:7,w:1,t:'hblock'},{x:355,y:6,w:1,t:'hblock'},
-      {x:490,y:5,w:1,t:'hblock'},{x:840,y:5,w:1,t:'hblock'},
-      {x:1042,y:7,w:1,t:'hblock'},
+      // Bridge over pit 1
+      {x:130,y:6,w:5,t:'brick'},{x:142,y:5,w:10,t:'qblock'},{x:160,y:7,w:5,t:'qblock'},
+      {x:205,y:9,w:6,t:'brick'},{x:230,y:7,w:5,t:'qblock'},
+      // Mid section
+      {x:258,y:6,w:5,t:'brick'},{x:285,y:8,w:5,t:'qblock'},
+      // Bridge over pit 2
+      {x:310,y:6,w:12,t:'qblock'},{x:330,y:7,w:4,t:'brick'},
+      {x:360,y:9,w:5,t:'brick'},{x:378,y:7,w:5,t:'qblock'},
+      // Mid section 2
+      {x:395,y:6,w:4,t:'brick'},
+      // Bridge over pit 3
+      {x:412,y:5,w:6,t:'brick'},{x:422,y:6,w:10,t:'qblock'},
+      {x:452,y:9,w:5,t:'brick'},{x:468,y:7,w:5,t:'qblock'},
+      // Mid section 3
+      {x:500,y:6,w:5,t:'brick'},
+      // Bridge over pit 4
+      {x:510,y:5,w:8,t:'qblock'},{x:525,y:7,w:4,t:'brick'},
+      // Final stretch
+      {x:566,y:7,w:6,t:'qblock'},{x:575,y:9,w:5,t:'brick'},
+      // Health blocks
+      {x:60,y:7,w:1,t:'hblock'},{x:285,y:7,w:1,t:'hblock'},{x:468,y:6,w:1,t:'hblock'},
     ],
-    pipes: [{x:20,h:2},{x:40,h:3},{x:72,h:2},{x:106,h:4},{x:255,h:3},{x:278,h:2},{x:348,h:3},{x:378,h:4},{x:518,h:2},{x:542,h:3},{x:608,h:4},{x:632,h:2},{x:758,h:3},{x:786,h:2},{x:860,h:4},{x:974,h:3},{x:998,h:2},{x:1048,h:3},{x:1128,h:4},{x:1156,h:2}],
-    coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,14,10);cl(18,30,9);cl(36,50,8);ca(60,9,5,7);cl(88,112,5);ca(130,8,4,6);cl(148,170,5);ca(195,8,5,7);cl(230,248,3);cl(263,280,6);cl(307,328,5);ca(340,6,4,6);cl(363,388,4);cl(392,410,4);ca(430,5,5,7);cl(468,496,5);cl(540,562,5);cl(575,600,6);cl(620,648,8);ca(665,6,5,7);cl(685,712,5);ca(730,7,4,6);cl(748,780,4);cl(795,820,6);ca(840,5,5,7);cl(858,890,4);cl(908,940,5);ca(960,6,4,6);cl(978,1010,5);cl(1025,1055,4);ca(1075,5,5,7);cl(1090,1130,6);cl(1145,1180,5); }),
-    // Enemies arranged in bat+goomba pairs every ~25 tiles for easy turbo chaining
+    pipes: [{x:20,h:2},{x:40,h:3},{x:72,h:2},{x:106,h:4},{x:245,h:3},{x:265,h:2},{x:370,h:3},{x:385,h:4},{x:480,h:2},{x:540,h:3},{x:562,h:2}],
+    coinDefs: makeCoinDefs((cl,ca)=>{ cl(2,14,10);cl(18,50,8);ca(60,9,5,7);cl(88,112,5);ca(130,7,4,6);cl(148,165,5);ca(200,9,5,7);cl(230,258,4);cl(268,298,5);ca(312,6,5,7);cl(338,378,5);cl(390,412,4);ca(425,6,5,7);cl(455,490,5);ca(505,6,4,7);cl(530,556,5); }),
     goombas: [
       {x:10,pl:5,pr:28},{x:35,pl:28,pr:55},
-      {x:65,pl:55,pr:82},{x:90,pl:82,pr:108},
-      {x:130,pl:122,pr:148},{x:155,pl:148,pr:172},
-      {x:215,pl:208,pr:238},{x:240,pl:232,pr:258},
-      {x:275,pl:268,pr:292},{x:300,pl:292,pr:318},
-      {x:330,pl:322,pr:348},{x:355,pl:348,pr:372},
-      {x:395,pl:388,pr:412},{x:418,pl:410,pr:435},
-      {x:490,pl:482,pr:508},{x:515,pl:508,pr:532},
-      {x:545,pl:538,pr:562},{x:568,pl:560,pr:585},
-      {x:600,pl:592,pr:618},{x:625,pl:618,pr:642},
-      {x:658,pl:650,pr:675},{x:682,pl:675,pr:700},
-      {x:720,pl:712,pr:738},{x:745,pl:738,pr:762},
-      {x:778,pl:770,pr:795},{x:802,pl:795,pr:820},
-      {x:840,pl:832,pr:858},{x:862,pl:855,pr:878},
-      {x:920,pl:912,pr:938},{x:945,pl:938,pr:962},
-      {x:988,pl:980,pr:1005},{x:1012,pl:1005,pr:1030},
-      {x:1048,pl:1040,pr:1065},{x:1072,pl:1065,pr:1088},
-      {x:1118,pl:1110,pr:1135},{x:1142,pl:1135,pr:1158},
-      {x:1162,pl:1155,pr:1178},{x:1178,pl:1170,pr:1192},
+      {x:65,pl:55,pr:82},{x:90,pl:82,pr:112},
+      {x:130,pl:122,pr:148},{x:155,pl:148,pr:170},
+      {x:210,pl:200,pr:228},{x:232,pl:222,pr:250},
+      {x:262,pl:252,pr:278},{x:288,pl:278,pr:302},
+      {x:340,pl:330,pr:358},{x:362,pl:352,pr:378},
+      {x:395,pl:385,pr:408},{x:415,pl:405,pr:428},
+      {x:455,pl:445,pr:470},{x:472,pl:462,pr:488},
+      {x:505,pl:495,pr:520},{x:528,pl:515,pr:542},
+      {x:558,pl:548,pr:572},{x:570,pl:560,pr:578},
     ],
     flyers: [
-      // 3 bats per cluster — two flanking + one in the middle
       {x:18,fy:6*TILE,pw:7},{x:31,fy:7*TILE,pw:7},{x:45,fy:6*TILE,pw:7},
       {x:72,fy:6*TILE,pw:7},{x:85,fy:7*TILE,pw:7},{x:98,fy:6*TILE,pw:7},
       {x:138,fy:6*TILE,pw:7},{x:150,fy:7*TILE,pw:7},{x:162,fy:6*TILE,pw:7},
-      {x:222,fy:6*TILE,pw:7},{x:235,fy:7*TILE,pw:7},{x:248,fy:6*TILE,pw:7},
-      {x:282,fy:6*TILE,pw:7},{x:295,fy:7*TILE,pw:7},{x:308,fy:6*TILE,pw:7},
-      {x:338,fy:6*TILE,pw:7},{x:350,fy:7*TILE,pw:7},{x:362,fy:6*TILE,pw:7},
-      {x:402,fy:6*TILE,pw:7},{x:414,fy:7*TILE,pw:7},{x:426,fy:6*TILE,pw:7},
-      {x:498,fy:6*TILE,pw:7},{x:510,fy:7*TILE,pw:7},{x:522,fy:6*TILE,pw:7},
-      {x:552,fy:6*TILE,pw:7},{x:564,fy:7*TILE,pw:7},{x:576,fy:6*TILE,pw:7},
-      {x:608,fy:6*TILE,pw:7},{x:620,fy:7*TILE,pw:7},{x:632,fy:6*TILE,pw:7},
-      {x:665,fy:6*TILE,pw:7},{x:677,fy:7*TILE,pw:7},{x:690,fy:6*TILE,pw:7},
-      {x:728,fy:6*TILE,pw:7},{x:740,fy:7*TILE,pw:7},{x:752,fy:6*TILE,pw:7},
-      {x:785,fy:6*TILE,pw:7},{x:797,fy:7*TILE,pw:7},{x:810,fy:6*TILE,pw:7},
-      {x:848,fy:6*TILE,pw:7},{x:859,fy:7*TILE,pw:7},{x:870,fy:6*TILE,pw:7},
-      {x:928,fy:6*TILE,pw:7},{x:940,fy:7*TILE,pw:7},{x:952,fy:6*TILE,pw:7},
-      {x:995,fy:6*TILE,pw:7},{x:1007,fy:7*TILE,pw:7},{x:1020,fy:6*TILE,pw:7},
-      {x:1055,fy:6*TILE,pw:7},{x:1067,fy:7*TILE,pw:7},{x:1080,fy:6*TILE,pw:7},
-      {x:1125,fy:6*TILE,pw:7},{x:1137,fy:7*TILE,pw:7},{x:1150,fy:6*TILE,pw:7},
-      {x:1168,fy:6*TILE,pw:7},{x:1175,fy:7*TILE,pw:7},{x:1182,fy:6*TILE,pw:7},
+      {x:218,fy:6*TILE,pw:7},{x:232,fy:7*TILE,pw:7},{x:245,fy:6*TILE,pw:7},
+      {x:270,fy:6*TILE,pw:7},{x:283,fy:7*TILE,pw:7},{x:295,fy:6*TILE,pw:7},
+      {x:348,fy:6*TILE,pw:7},{x:360,fy:7*TILE,pw:7},{x:372,fy:6*TILE,pw:7},
+      {x:400,fy:6*TILE,pw:7},{x:412,fy:7*TILE,pw:7},{x:424,fy:6*TILE,pw:7},
+      {x:460,fy:6*TILE,pw:7},{x:472,fy:7*TILE,pw:7},{x:484,fy:6*TILE,pw:7},
+      {x:510,fy:6*TILE,pw:7},{x:522,fy:7*TILE,pw:7},{x:535,fy:6*TILE,pw:7},
+      {x:558,fy:6*TILE,pw:7},{x:568,fy:7*TILE,pw:7},{x:576,fy:6*TILE,pw:7},
     ],
   },
   // Level 2 — wide gaps, tall platforms
